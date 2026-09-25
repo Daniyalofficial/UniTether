@@ -1,0 +1,22 @@
+UniTether
+Copyright 2026 UniTether Contributors
+
+This product includes software developed by the UniTether project.
+
+--------------------------------------------------------------------
+BASELINE ACKNOWLEDGMENT
+--------------------------------------------------------------------
+UniTether was designed with Gnirehtet (https://github.com/Genymobile/gnirehtet)
+as its functional and conceptual baseline:
+
+    Gnirehtet - Reverse network tethering for Android
+    Copyright (C) 2015 Genymobile
+    Licensed under the Apache License, Version 2.0
+
+Gnirehtet's approach of combining an Android VPNService with a host-side
+TUN device and an ADB transport is the architectural foundation that
+UniTether extends (dual-stack IP, wireless transports, screen mirroring,
+audio, and productivity channels). Gnirehtet itself is acknowledged and
+credited in README.md and docs/14-ACKNOWLEDGMENTS.md in accordance with
+open-source etiquette. No Gnirehtet source code is redistributed; all
+UniTether code is independently written and licensed under Apache-2.0.

@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["crates/protocol", "crates/transport", "crates/tunnel", "crates/proxy", "crates/unitether"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.79"
+license = "Apache-2.0"
+authors = ["UniTether Contributors"]
+repository = "https://github.com/Daniyalofficial/UniTether"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

@@ -1,0 +1,18 @@
+[package]
+name = "unitether"
+description = "UniTether CLI: host-side reverse tethering, mirroring, proxy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "unitether"
+path = "src/main.rs"
+
+[dependencies]
+unilink-protocol = { path = "../protocol" }
+unilink-transport = { path = "../transport" }
+unilink-tunnel = { path = "../tunnel" }
+unilink-proxy = { path = "../proxy" }

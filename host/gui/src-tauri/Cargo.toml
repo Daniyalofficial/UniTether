@@ -1,0 +1,24 @@
+[package]
+name = "unitether-gui"
+description = "UniTether desktop GUI (Tauri 2)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "unitether_gui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+unilink-protocol = { path = "../../crates/protocol" }
+unilink-transport = { path = "../../crates/transport" }
+unilink-tunnel = { path = "../../crates/tunnel" }
+unilink-proxy = { path = "../../crates/proxy" }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniTether</string>
+    <string name="idle">निष्क्रिय</string>
+    <string name="listening">सुन रहा है — होस्ट से कनेक्ट करें (ADB / LAN)</string>
+    <string name="connected">कनेक्टेड — रिवर्स टिदर सक्रिय</string>
+    <string name="disconnected">डिस्कनेक्टेड</string>
+    <string name="stopped">रोका गया</string>
+    <string name="paired">जोड़ी सीक्रेट अपडेट हुआ</string>
+    <string name="start">शुरू करें</string>
+    <string name="stop">रोकें</string>
+    <string name="qr">जोड़ी QR कोड दिखाएं</string>
+    <string name="scan_qr">होस्ट से स्कैन करें</string>
+    <string name="paste_title">जोड़ी स्ट्रिंग पेस्ट करें</string>
+    <string name="paste_blob">UNITETHER1:…</string>
+    <string name="pairing_label">जोड़ी स्ट्रिंग (होस्ट पर स्कैन या पेस्ट करें):</string>
+    <string name="tunnel_running">रिवर्स टिदर चल रहा है</string>
+    <string name="tunnel_channel">टनल</string>
+    <string name="mirror_running">स्क्रीन मिररिंग सक्रिय</string>
+    <string name="audio_running">ऑडियो ब्रिज सक्रिय</string>
+    <string name="notify_service_label">UniTether सूचनाएं</string>
+    <string name="features">सुविधाएं</string>
+    <string name="features_list">डुअल-स्टैक रिवर्स टनल (IPv4+IPv6)\nस्क्रीन मिरर (H.264, 4K60 तक)\nद्विदिशात्मक Opus ऑडियो\nटच / की / टेक्स्ट इनपुट\nक्लिपबोर्ड, फाइलें, सूचनाएं\nSMS/WhatsApp उत्तर\nकैमरा होस्ट वेबकैम के रूप में</string>
+</resources>

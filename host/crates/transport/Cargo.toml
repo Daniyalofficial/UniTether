@@ -1,0 +1,11 @@
+[package]
+name = "unilink-transport"
+description = "ULP transports: TCP framing, ADB forward, mDNS discovery"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+unilink-protocol = { path = "../protocol" }

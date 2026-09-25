@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniTether</string>
+    <string name="idle">خامل</string>
+    <string name="listening">بانتظار — اتصل من المضيف (ADB / LAN)</string>
+    <string name="connected">متصل — التوجيه العكسي نشط</string>
+    <string name="disconnected">انقطع الاتصال</string>
+    <string name="stopped">متوقف</string>
+    <string name="paired">تم تحديث سِر الاقتران</string>
+    <string name="start">ابدأ</string>
+    <string name="stop">أوقف</string>
+    <string name="qr">عرض رمز QR للاقتران</string>
+    <string name="scan_qr">امسح من المضيف</string>
+    <string name="paste_title">لصق سلسلة الاقتران</string>
+    <string name="paste_blob">UNITETHER1:…</string>
+    <string name="pairing_label">سلسلة الاقتران (امسح أو الصق على المضيف):</string>
+    <string name="tunnel_running">التوجيه العكسي يعمل</string>
+    <string name="tunnel_channel">النفق</string>
+    <string name="mirror_running">عرض الشاشة نشط</string>
+    <string name="audio_running">جسر الصوت نشط</string>
+    <string name="notify_service_label">إشعارات UniTether</string>
+    <string name="features">المزايا</string>
+    <string name="features_list">نفق عكسي مزدوج (IPv4+IPv6)\nعرض الشاشة (H.264، حتى 4K60)\nصوت Opus ثنائي الاتجاه\nلمس / مفاتيح / نص\nالحافظة، الملفات، الإشعارات\nرد SMS/WhatsApp\nالكاميرا ككاميرا ويب للمضيف</string>
+</resources>

@@ -1,0 +1,2 @@
+-keep class com.unilink.audio.OpusJni { *; }
+-keepclasseswithmembers class * { native <methods>; }

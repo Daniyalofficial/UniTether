@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniTether</string>
+    <string name="idle">Idle</string>
+    <string name="listening">Listening — connect from the host (ADB / LAN)</string>
+    <string name="connected">Connected — reverse tether active</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="stopped">Stopped</string>
+    <string name="paired">Pairing secret updated</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="qr">Show pairing QR code</string>
+    <string name="scan_qr">Scan with the host</string>
+    <string name="paste_title">Paste pairing blob</string>
+    <string name="paste_blob">UNITETHER1:…</string>
+    <string name="pairing_label">Pairing blob (scan or paste on the host):</string>
+    <string name="tunnel_running">Reverse tether running</string>
+    <string name="tunnel_channel">Tunnel</string>
+    <string name="mirror_running">Screen mirroring active</string>
+    <string name="audio_running">Audio bridge active</string>
+    <string name="notify_service_label">UniTether notifications</string>
+    <string name="features">Features</string>
+    <string name="features_list">Dual-stack reverse tunnel (IPv4+IPv6)\nScreen mirror (H.264, up to 4K60)\nBidirectional Opus audio\nTouch / key / text input\nClipboard, files, notifications\nSMS/WhatsApp reply\nCamera as host webcam</string>
+</resources>

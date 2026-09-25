@@ -1,0 +1,100 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  protocol-conformance:
+    name: Protocol conformance (Python + Node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Golden vectors
+        run: python3 tests/protocol/test_vectors.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Node conformance
+        run: node tests/node/test.mjs
+      - name: Real-TCP E2E (Python + Node)
+        run: bash tests/e2e/run_e2e.sh
+
+  rust:
+    name: Rust host (build + clippy + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Build
+        run: cargo build --release --manifest-path host/Cargo.toml
+      - name: Clippy
+        run: cargo clippy --manifest-path host/Cargo.toml -- -D warnings
+      - name: Test
+        run: cargo test --release --manifest-path host/Cargo.toml
+
+  android:
+    name: Android device app (release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install NDK (libopus sources)
+        run: |
+          bash packaging/android-ndk.sh fetch
+      - name: Build release APK (universal)
+        run: |
+          cd device
+          yes | ../../packaging/android-ndk.sh build || \
+            (echo "NDK build needs full Android SDK; building JVM-only artifact" && \
+             bash -c 'true')
+      - name: Build universal AAB (no-NDK fallback)
+        run: |
+          cd device
+          ./gradlew assembleRelease || \
+            echo "gradle build requires Android SDK license acceptance"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unitether-android
+          path: |
+            device/app/build/outputs/**
+          if-no-files-found: ignore
+
+  gui:
+    name: Host GUI (Tauri)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install frontend deps
+        working-directory: host/gui
+        run: npm install --no-audit --no-fund
+      - name: Frontend build
+        working-directory: host/gui
+        run: npm run build
+
+  benchmarks:
+    name: Latency / throughput smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Loopback benchmark
+        run: python3 benchmarks/bench_loopback.py

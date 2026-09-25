@@ -1,0 +1,12 @@
+[package]
+name = "unilink-proxy"
+description = "ULP proxy: SOCKS5 and HTTP proxies that forward into the tunnel"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+unilink-protocol = { path = "../protocol" }
+unilink-transport = { path = "../transport" }
