@@ -20,6 +20,12 @@ class UlpSession(private val in: InputStream, private val out: OutputStream) {
     private var encrypted = false
     var peerFeatures: Int = 0
         private set
+    /** v1.1: exact wire bytes (both directions) for identity/resume MACs. */
+    private val transcriptBuf = java.io.ByteArrayOutputStream()
+    /** Transcript BEFORE the frame currently being received. */
+    var transcriptPrefix: ByteArray = ByteArray(0)
+        private set
+    val transcript: ByteArray get() = transcriptBuf.toByteArray()
 
     class Keys(val aead: ByteArray, val mac: ByteArray, val cipherSel: Int)
 
@@ -64,7 +70,11 @@ class UlpSession(private val in: InputStream, private val out: OutputStream) {
             (((hdr[7].toInt() and 0xFF) shl 24) or ((hdr[8].toInt() and 0xFF) shl 16) or
              ((hdr[9].toInt() and 0xFF) shl 8) or (hdr[10].toInt() and 0xFF))
         } else ln
-        var payload = recvExact(size)
+        val raw = recvExact(size)
+        transcriptPrefix = transcriptBuf.toByteArray()
+        transcriptBuf.write(hdr)
+        transcriptBuf.write(raw)
+        var payload = raw
         val channel = hdr[3].toInt() and 0xFF
         val flags = hdr[4].toInt() and 0xFF
         val enc = (flags and UlpFrame.F_ENCRYPTED) != 0
@@ -87,8 +97,11 @@ class UlpSession(private val in: InputStream, private val out: OutputStream) {
             val ct = UlpCrypto.interopEncrypt(keyAead, keyMac, nonce, hdr, payload)
             require(ct.size == wireLen) { "interop length mismatch" }
             out.write(hdr); out.write(ct)
+            transcriptBuf.write(hdr); transcriptBuf.write(ct)
         } else {
-            out.write(UlpFrame.Frame(channel, flags, payload).encode())
+            val wire = UlpFrame.Frame(channel, flags, payload).encode()
+            out.write(wire)
+            transcriptBuf.write(wire)
         }
         out.flush()
     }

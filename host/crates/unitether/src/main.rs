@@ -310,7 +310,8 @@ fn configure_tun(tun: &Box<dyn TunDevice>) -> std::io::Result<()> {
     tun.configure(Some(Ipv4Addr::new(10, 8, 0, 1)), Some(Ipv6Addr::new(0xfd, 0, 0, 0, 0, 0, 0, 1)))
 }
 
-fn spawn_tun_pumps(session: Arc<Mutex<Session>>, mut tun: Box<dyn TunDevice>) {
+fn spawn_tun_pumps(session: Arc<Mutex<Session<FramedConn>>>,
+                        mut tun: Box<dyn TunDevice>) {
     // TUN -> ULP
     let s1 = Arc::clone(&session);
     std::thread::spawn(move || loop {

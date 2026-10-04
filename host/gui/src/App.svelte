@@ -1,141 +1,109 @@
 <script>
   import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
-  import DeviceCard from "./components/DeviceCard.svelte";
-  import PairingPanel from "./components/PairingPanel.svelte";
-  import StatsPanel from "./components/StatsPanel.svelte";
+  import Dashboard from "./views/Dashboard.svelte";
+  import Devices from "./views/Devices.svelte";
+  import Pairing from "./views/Pairing.svelte";
+  import Settings from "./views/Settings.svelte";
   import { lang, setLanguage, t, LANGUAGES } from "./i18n";
+  import { connection, scan } from "./store";
+  import { IS_SIM } from "./api";
 
-  let currentLang = $lang;
-  $: currentLang = $lang;
+  let view = "dashboard";
 
-  let devices = [];
-  let scanning = true;
-  let connected = false;
-  let address = "";
-  let port = 41880;
-  let pairBlob = "";
-  let error = "";
+  const dotClass =
+    $connection.state === "connected" ? "ok" :
+    $connection.state === "connecting" ? "busy" : "";
 
-  async function refresh() {
-    try {
-      devices = await invoke("list_devices");
-    } catch {
-      devices = [];
-    }
-    scanning = false;
-  }
-
-  async function connect(dev) {
-    address = dev ? dev.address : address;
-    port = dev ? dev.port : port;
-    error = "";
-    try {
-      await invoke("connect", {
-        address,
-        port,
-        pairBlob: pairBlob.trim() || null,
-      });
-      connected = true;
-    } catch (e) {
-      error = String(e);
-    }
-  }
-
-  async function disconnect() {
-    try {
-      await invoke("disconnect");
-    } finally {
-      connected = false;
-    }
+  function goto(v) {
+    view = v;
+    if (v === "devices") scan();
   }
 
   onMount(() => {
-    refresh();
-    const timer = setInterval(refresh, 5000);
-    return () => clearInterval(timer);
+    scan();
   });
 </script>
 
-<div class="layout">
-  <header>
-    <h1>UniTether</h1>
-    <label class="lang">
-      {t("language")}
-      <select bind:value={currentLang} on:change={() => setLanguage(currentLang)}>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">U</div>
+      <div>
+        <div class="name">{t("title")}</div>
+        <div class="sub">{t("tagline")}</div>
+      </div>
+    </div>
+
+    <button class="nav-item {view === 'dashboard' ? 'active' : ''}" on:click={() => goto("dashboard")}>
+      <span class="ico">⌂</span> {t("nav_dashboard")}
+    </button>
+    <button class="nav-item {view === 'devices' ? 'active' : ''}" on:click={() => goto("devices")}>
+      <span class="ico">▤</span> {t("nav_devices")}
+    </button>
+    <button class="nav-item {view === 'pairing' ? 'active' : ''}" on:click={() => goto("pairing")}>
+      <span class="ico"></span> {t("nav_pairing")}
+    </button>
+    <button class="nav-item {view === 'settings' ? 'active' : ''}" on:click={() => goto("settings")}>
+      <span class="ico">⚙</span> {t("nav_settings")}
+    </button>
+
+    <div class="spacer"></div>
+
+    <label class="lang-field">
+      <span>{t("language")}</span>
+      <select bind:value={$lang} on:change={() => setLanguage($lang)}>
         {#each LANGUAGES as [code, label]}
           <option value={code}>{label}</option>
         {/each}
       </select>
     </label>
-  </header>
 
-  <section class="panel">
-    <h2>{t("devices")}</h2>
-    {#if scanning}
-      <p class="muted">{t("searching")}</p>
-    {:else if devices.length === 0}
-      <p class="muted">{t("no_devices")}</p>
-    {:else}
-      <div class="grid">
-        {#each devices as d (d.address + d.port + d.name)}
-          <DeviceCard device={d} connected={connected} on:connect={() => connect(d)} on:disconnect={disconnect} />
-        {/each}
-      </div>
-    {/if}
-    <div class="manual">
-      <label>{t("address")} <input bind:value={address} placeholder="192.168.1.50" /></label>
-      <label>{t("port")} <input type="number" bind:value={port} /></label>
-      <button class="secondary" disabled={connected} on:click={() => connect(null)}>{t("manual")}</button>
+    <div class="status-chip">
+      <span class="dot {dotClass}"></span>
+      {#if $connection.state === "connected"}{t("status_connected")}
+      {:else if $connection.state === "connecting"}{t("status_connecting")}
+      {:else}{t("status_idle")}
+      {/if}
     </div>
-  </section>
+  </aside>
 
-  <PairingPanel bind:pairBlob bind:error />
+  <main class="main">
+    <div class="main-inner">
+      {#if IS_SIM}
+        <div class="sim-note" role="note">
+          <strong>{t("sim_badge")}:</strong> {t("sim_notice")}
+        </div>
+      {/if}
 
-  <div class="row">
-    <StatsPanel connected={connected} />
-    <section class="panel">
-      <h2>{t("features")}</h2>
-      <p class="muted">{t("features_list")}</p>
-    </section>
-  </div>
+      {#if view === "dashboard"}
+        <Dashboard />
+      {:else if view === "devices"}
+        <Devices goto={goto} />
+      {:else if view === "pairing"}
+        <Pairing goto={goto} />
+      {:else}
+        <Settings />
+      {/if}
+    </div>
+  </main>
 </div>
 
 <style>
-  .layout {
+  .lang-field {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    max-width: 960px;
-    margin: 0 auto;
-  }
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  h1 { font-size: 20px; margin: 0; }
-  h2 { font-size: 15px; margin: 0 0 10px; color: var(--accent); }
-  .muted { color: var(--muted); }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 10px;
-  }
-  .manual {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    align-items: center;
-  }
-  .manual label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    gap: 4px;
+    padding: 0 10px 10px;
+    font-size: 11.5px;
     color: var(--muted);
   }
-  .row { display: flex; gap: 12px; }
-  .row .panel { flex: 1; }
-  .lang { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+  .lang-field select {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 6px;
+    font-size: 12.5px;
+    font-family: inherit;
+  }
 </style>

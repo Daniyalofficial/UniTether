@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import * as ulp from './ulplink.mjs';
+import * as fileV2 from './fileV2.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const vecDir = join(here, '..', '..', 'protocol', 'vectors');
@@ -23,6 +24,41 @@ function check(name, cond, detail = '') {
 }
 const hex = (b) => Buffer.from(b).toString('hex');
 const unhex = (s) => Uint8Array.from(Buffer.from(s, 'hex'));
+
+// ---------------------------------------------------------------- file ops (v2)
+{
+  for (const v of load('file_vectors.json').vectors) {
+    const a = v.args;
+    let built;
+    switch (v.op) {
+      case 0: built = fileV2.meta(a.direction, a.file_id, BigInt("0x" + a.total_hex), a.name); break;
+      case 1: built = fileV2.data(a.direction, a.file_id, a.seq, a.offset, unhex(a.chunk_hex)); break;
+      case 2: built = fileV2.ack(a.direction, a.file_id, a.seq_ack); break;
+      case 3: built = fileV2.cancel(a.direction, a.file_id); break;
+      case 4: built = fileV2.done(a.direction, a.file_id); break;
+      case 5: built = fileV2.resumeReq(a.direction, a.file_id, a.expected_offset); break;
+      case 6: built = fileV2.resumeRsp(a.direction, a.file_id, a.offset, a.state); break;
+      case 7: built = fileV2.checksum(a.direction, a.file_id, unhex(a.sha256_hex)); break;
+    }
+    check(`fileop:${v.name}`, hex(built) === v.expected, `${hex(built)} != ${v.expected}`);
+    // parse roundtrip on the golden bytes
+    const p = unhex(v.expected);
+    let ok;
+    switch (v.op) {
+      case 0: ok = fileV2.metaParse(p).total === Number(BigInt("0x" + a.total_hex)) && fileV2.metaParse(p).name === a.name && fileV2.metaParse(p).fileId === a.file_id; break;
+      case 1: ok = fileV2.dataParse(p).fileId === a.file_id && fileV2.dataParse(p).seq === a.seq && fileV2.dataParse(p).offset === a.offset; break;
+      case 5: ok = JSON.stringify(fileV2.resumeReqParse(p)) === JSON.stringify({ direction: a.direction, fileId: a.file_id, expectedOffset: a.expected_offset }); break;
+      case 6: ok = JSON.stringify(fileV2.resumeRspParse(p)) === JSON.stringify({ direction: a.direction, fileId: a.file_id, offset: a.offset, state: a.state }); break;
+      case 7: ok = JSON.stringify(fileV2.checksumParse(p).sha256.toString('hex')) === JSON.stringify(a.sha256_hex); break;
+      default: ok = true;
+    }
+    check(`fileop-parse:${v.name}`, ok);
+  }
+  // engine semantics: SHA-256 of a known buffer
+  check("fileop:sha256 known",
+    fileV2.sha256(Buffer.from("unilink-file-checksum-test", "utf8")).toString("hex")
+    === "d7ad0fef37fc985f023e68bef72bf62a17729bd999484acf5ebeb4390861e4c7");
+}
 
 // ---------------------------------------------------------------- frames
 for (const v of load('frames.json').vectors) {
@@ -182,6 +218,37 @@ for (const v of load('pairing.json').vectors) {
   check(`pairing:${v.name}:parse`, hex(secret) === v.secret && name === v.name);
 }
 
+// ---------------------------------------------------------------- state machine
+import { selfTest as smSelfTest } from "./session_state.mjs";
+smSelfTest(check);
+
+// ---------------------------------------------------------------- ULP v1.1
+import * as v11 from "./v11_vectors.mjs";
+v11.selfTest(check);
+
+// ---------------------------------------------------------------- limits + errors
+{
+  const { ULPError, LIMITS, RESERVED_FLAGS, enforceLimitsOnReceive, encodeFrame, Frame } = ulp;
+  check("limits:reserved flags const", RESERVED_FLAGS === (ulp.F.COMPRESSED | ulp.F.FRAG));
+  check("limits:frame max", LIMITS.MAX_FRAME_BYTES === ulp.MAX_PAYLOAD);
+  // reserved flag rejection
+  for (const fl of [ulp.F.COMPRESSED, ulp.F.FRAG, RESERVED_FLAGS]) {
+    try { enforceLimitsOnReceive(fl); check(`limits:reject flag ${fl.toString(16)}`, false); }
+    catch (e) { check(`limits:reject flag ${fl.toString(16)}`, e instanceof ULPError && e.code === 0x0004); }
+  }
+  check("limits:clean flags ok", (() => { try { enforceLimitsOnReceive(ulp.F.ENCRYPTED | ulp.F.PRIORITY); return true; } catch { return false; } })());
+  // oversize frame
+  try {
+    encodeFrame(ulp.CH.FILE, 0, new Uint8Array(ulp.MAX_PAYLOAD + 1).fill(1));
+    check("limits:oversize rejected", false);
+  } catch (e) {
+    check("limits:oversize rejected", e instanceof ULPError && e.code === 0x0005);
+  }
+  // structured error shape
+  const err = new ULPError("boom", { code: ulp.ERROR_FLAG ? 0x0008 : 8, retryable: true, correlationId: "s1" });
+  check("errors:shape", err.code === 0x0008 && err.retryable === true && err.correlationId === "s1");
+}
+
 // ---------------------------------------------------------------- summary
 console.log(`NODE ULP CONFORMANCE: ${pass} pass, ${fail} fail`);
 if (failures.length) {
@@ -189,4 +256,4 @@ if (failures.length) {
   for (const f of failures) console.log('  ' + f);
   process.exit(1);
 }
-console.log('  - frames, crypto, session keys, messages, channels, pairing: ALL PASS');
+console.log('  - frames, crypto, session keys, messages, channels, pairing, state machine, v1.1, limits: ALL PASS');

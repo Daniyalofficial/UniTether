@@ -132,16 +132,43 @@ offset size field
 ### 5.4 FILE (both directions)
 ```
 common:
-0   1    op        0x00 meta, 0x01 data, 0x02 ack, 0x03 cancel, 0x04 done
+0   1    op        0x00 meta, 0x01 data, 0x02 ack, 0x03 cancel, 0x04 done,
+                   0x05 resume_req, 0x06 resume_rsp, 0x07 checksum  [v2]
 1   1    direction 0x00 host→device, 0x01 device→host
 2   4    file_id   session-scoped u32
 per-op:
 meta:   6  8  total_size
         14 2  name_len ; 16 N utf8 name
 data:   6  4  seq ; 10 8 offset ; 18 N chunk (≤ 256 KiB)
-ack:    6  4  seq_ack
+ack:    6  4  seq_ack   (checksum ack uses seq_ack = 0xFFFF)
 cancel/done: nothing
+resume_req: 6  8  expected_offset                                [v2]
+resume_rsp: 6  8  offset ; 14 1 state (0 none | 1 partial | 2 complete) [v2]
+checksum:   6 32  sha256 of the full file                        [v2]
 ```
+
+**v2 transfer protocol** (backward compatible: v1 peers ignore
+0x05–0x07 by the unknown-op rule; golden vectors in
+`protocol/vectors/file_vectors.json`; reference engine in
+`tests/protocol/file_transfer.py`, conformance ports in
+`tests/node/fileV2.mjs` and `productivity/FileTransfer.kt`):
+
+1. Sender → `meta`, then `resume_req(expected_offset=0)`.
+2. Receiver → `resume_rsp(offset, state)`. `state=2` (complete,
+   including duplicate skip: same bare name + total size) ends the
+   transfer with zero data. `state=1` resumes at the receiver's
+   contiguous `.part` offset.
+3. Chunked `data` (ack per chunk) from that offset.
+4. Sender → `done`, then `checksum(sha256)`.
+5. Receiver verifies the hash over its `.part`:
+   - match → **atomic commit** (`.part` renamed to final name;
+     collisions pre-reserved with `.1/.2` suffixes at `meta` time)
+     → `ack(seq_ack=0xFFFF)`.
+   - mismatch → delete `.part`, log, `cancel` → sender restarts
+     from 0 (bounded: the file is reset, so it converges).
+
+Integrity is whole-file SHA-256 (system/audited digest); no per-chunk
+MAC is added — the channel is already AEAD-protected per frame.
 
 ### 5.5 CLIPBOARD (both directions)
 ```
@@ -345,3 +372,77 @@ wire      = ct ‖ tag
 is announced via `HELLO.version` (v1.1 will carry a `u8 minor` field in
 HELLO). Interop rule: use the lower version's behavior; negotiate
 features via `feature_mask`, never via framing.
+
+---
+
+## 15. ULP v1.1 extensions (backward compatible)
+
+**Byte-stability rule:** v1 frames and messages keep their exact bytes
+forever (all `protocol/vectors/*.json` remain the gate). v1.1 extends
+by addition only (docs/21).
+
+### 15.1 Version / capability negotiation
+
+- Feature bit **`FEAT_VERSIONED = 1 << 8`** in the u16 HELLO feature
+  mask (v1 peers use ≤ 0x00FF and ignore unknown bits).
+- The negotiated feature field in HELLO_ACK decides: bit 8 set in
+  `negotiated` ⇒ v1.1 identity exchange is MANDATORY; otherwise the
+  session runs as pure v1 (no identity messages, zero byte changes).
+
+### 15.2 Identity exchange (post-AUTH_OK, only if FEAT_VERSIONED)
+
+Strict order (device first), each message MACed over the **wire
+transcript** — exact bytes of all frames (header + payload, both
+directions, local observation order) observed up to **before** the
+current frame:
+
+1. device → `MSG_DEVICE_ID (0x11)`, body 164 B:
+   `device_id(16) ‖ identity_pub(32) ‖ name(64) ‖ platform(16) ‖ app_ver(16) ‖ caps(u32be) ‖ mac(16)`
+   where `device_id = SHA256("unilink-dev-id-v1" ‖ identity_pub)[:16]`
+   and `mac = HMAC-SHA256(key_mac, "unilink-dev-id-v1" ‖ transcript ‖ body[:148])[:16]`.
+2. host → `MSG_DEVICE_ID` (its own identity).
+3. device → `MSG_DEVICE_AUTH (0x12)`, body 49 B:
+   `decision(1) ‖ session_id(16) ‖ sender_id(16) ‖ mac(16)`,
+   `mac = HMAC-SHA256(key_mac, "unilink-dev-auth-v1" ‖ transcript ‖ body[:33])[:16]`.
+4. host → `MSG_DEVICE_AUTH` (its decision about the device identity;
+   carries the freshly generated 16-byte `session_id`).
+
+`decision`: 0 TRUSTED, 1 TRUSTED_NEW, 2 REVOKED (fatal),
+3 THROTTLED (fatal). A rejecting decision is fatal: sender raises
+after sending; peer tears down on receipt. A v1.1 peer that negotiated
+the feature and does not complete the exchange within 5 s must send
+`MSG_ERROR(ERR_IDENTITY_REQUIRED)` and close (downgrade protection).
+
+### 15.3 Session resumption
+
+- `MSG_RESUME_REQ (0x0E)` (v1 reserved slot, format fixed by v1.1),
+  body 80 B: `session_id(16) ‖ fresh_pub(32) ‖ resume_nonce(16) ‖ mac(16)`,
+  `mac = HMAC-SHA256(pairing_secret, "unilink-resume-v1" ‖ body[:64])[:16]`.
+  Keyed by the **pairing secret** (session keys are dead at resume time).
+- `MSG_RESUME_OK (0x13)`, body 48 B: `fresh_pub(32) ‖ mac(16)`,
+  `mac = HMAC-SHA256(pairing_secret, "unilink-resume-v1" ‖ session_id ‖ req_pub ‖ fresh_pub)[:16]`.
+- Both sides: `shared = X25519(fresh_priv, peer_fresh_pub)`;
+  `(key_aead, key_mac) = HKDF-SHA256(ikm=shared,
+  salt=resume_nonce ‖ session_id, info="unilink-v1-resume" ‖ u8(cipher), 64)`;
+  per-direction counters restart at 0 (fresh keys ⇒ nonce safety).
+- Validity bounds (configurable): same pairing secret, ≤ 10 min since
+  last frame, ≤ 50 resumptions, identity not revoked.
+- After resume: channel state replays via existing CONFIG/TUN_UP/QOS;
+  in-flight file transfers resume via `FILE_RESUME` (§16).
+
+### 15.4 Structured errors
+
+`MSG_ERROR` with message **flag 0x01** carries body
+`fatal(1) ‖ code(u16be) ‖ len(u16be) ‖ msg(≤120)`; flag 0x00 keeps the
+legacy opaque body. Codes: 0x0001 AUTH, 0x0002 CIPHER, 0x0003 VERSION,
+0x0004 FORMAT, 0x0005 LIMIT, 0x0006 TIMEOUT, 0x0007 IDENTITY_REQUIRED,
+0x0008 THROTTLED, 0x0009 REVOKED, 0x000A RESUME_INVALID,
+0x000B UPGRADE_REQUIRED. `fatal=0` errors are logged, not fatal.
+
+### 15.5 Conformance
+
+Golden vectors: `protocol/vectors/v11.json` (generator
+`tests/protocol/gen_v11_vectors.py`). Tests: `tests/protocol/test_v11.py`
+(54 checks incl. in-process identity exchange + revocation),
+`tests/protocol/test_v11_vectors.py` (23), Node `test.mjs` v1.1 section,
+`tests/e2e/test_resume.py` (14, real TCP resume).

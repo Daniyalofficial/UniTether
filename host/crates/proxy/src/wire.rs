@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 
 use unilink_protocol::frame::ch;
 use unilink_transport::session::Session;
+use unilink_transport::tcp::FramedConn;
 
 use crate::{Tunneler, TunnelerStream};
 
@@ -71,7 +72,7 @@ pub struct ProxyTunneler {
 }
 
 impl ProxyTunneler {
-    pub fn new(session: Arc<Mutex<Session>>) -> Self {
+    pub fn new(session: Arc<Mutex<Session<FramedConn>>>) -> Self {
         let (in_tx, in_rx) = channel::<In>();
         let (out_tx, out_rx) = channel::<Out>();
         let out_tx_clone = out_tx.clone();

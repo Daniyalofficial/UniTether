@@ -20,6 +20,13 @@ import reference_framing as rf  # noqa: E402
 
 
 class ULPError(Exception):
+    """Session-level protocol error (structured, Phase 46)."""
+    code = 0x0004
+    retryable = False
+
+    def __init__(self, msg: str = "", correlation_id: str = None):
+        super().__init__(msg)
+        self.correlation_id = correlation_id
     pass
 
 
@@ -35,6 +42,8 @@ class Link:
         self.buf = b""
         self.deadline = 30.0
         self.encrypted = encrypted
+        # v1.1 transcript: exact wire bytes for identity/resume MACs
+        self.transcript = bytearray()
 
     # ------------------------------------------------------------ I/O
     def _recv_exact(self, n: int) -> bytes:
@@ -67,10 +76,14 @@ class Link:
             # AAD = the exact wire header (spec 7.5)
             ct = rf.interop_encrypt(self.ka, self.km, nonce, header, payload)
             assert len(ct) == wire_len
-            self.sock.sendall(header + ct)
+            wire = header + ct
+            self.sock.sendall(wire)
+            self.transcript += wire
         else:
             frame = rf.Frame(channel, flags, payload)
-            self.sock.sendall(frame.encode())
+            wire = frame.encode()
+            self.sock.sendall(wire)
+            self.transcript += wire
 
     def recv_frame(self, expect_encrypted: bool = None) -> rf.Frame:
         if expect_encrypted is None:
@@ -93,6 +106,14 @@ class Link:
             raise ULPError(
                 f"encryption state mismatch (expected encrypted="
                 f"{expect_encrypted}) hdr={hdr.hex()}")
+        # prefix = transcript BEFORE this frame (sender builds MACs over
+        # its pre-send transcript; receiver verifies over the same prefix)
+        # reserved flags (compression/fragmentation) are never set by a
+        # conformant sender — reject on receive (docs/18 T9).
+        if flags & rf.F_COMPRESSED or flags & rf.F_FRAG:
+            raise ULPError(f"reserved frame flag {flags:#x}")
+        self.transcript_prefix = bytes(self.transcript)
+        self.transcript += hdr + payload
         if flags & rf.F_ENCRYPTED:
             nonce = rf.frame_nonce(self.rx_counter, channel, 1 - self.direction)
             self.rx_counter += 1

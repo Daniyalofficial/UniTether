@@ -27,7 +27,9 @@ export const CIPHER = { NONE: 0, INTEROP: 1, AESGCM: 2, CHACHA: 3 };
 
 // ----------------------------------------------------------------- framing
 export function encodeFrame(channel, flags, payload) {
-  if (payload.length > MAX_PAYLOAD) throw new Error('payload exceeds 1 MiB');
+  if (payload.length > MAX_PAYLOAD) {
+    throw new ULPError(`frame too large: ${payload.length} > ${MAX_PAYLOAD}`, { code: 0x0005 });
+  }
   const h = new Uint8Array(payload.length >= 0x8000 ? 11 : 7);
   h[0] = MAGIC0; h[1] = MAGIC1; h[2] = VERSION; h[3] = channel; h[4] = flags;
   if (payload.length >= 0x8000) {
@@ -424,4 +426,180 @@ export function statsBody(s) {
   b.writeUInt32BE(s.fpsVideo, 92);
   b.writeUInt32BE(s.audioLevel, 96);
   return b;
+}
+
+// ================================================================ ULP v1.1
+export const FEAT_VERSIONED = 1 << 8;
+export const MSG_DEVICE_ID = 0x11;
+export const MSG_DEVICE_AUTH = 0x12;
+export const MSG_RESUME_REQ = 0x0e;
+export const MSG_RESUME_OK = 0x13;
+export const CAP = {
+  NETWORK: 1 << 0, DISPLAY: 1 << 1, CAMERA: 1 << 2, MIC: 1 << 3,
+  AUDIO: 1 << 4, INPUT: 1 << 5, STORAGE: 1 << 6, MESSAGING: 1 << 7,
+  NOTIFICATIONS: 1 << 8, AUTOMATION: 1 << 9,
+};
+export const ERR = {
+  AUTH: 0x0001, CIPHER: 0x0002, VERSION: 0x0003, FORMAT: 0x0004,
+  LIMIT: 0x0005, TIMEOUT: 0x0006, IDENTITY_REQUIRED: 0x0007,
+  THROTTLED: 0x0008, REVOKED: 0x0009, RESUME_INVALID: 0x000a,
+  UPGRADE_REQUIRED: 0x000b,
+};
+export const ERROR_FLAG = 0x01;
+export const DECISION = { TRUSTED: 0, TRUSTED_NEW: 1, REVOKED: 2, THROTTLED: 3 };
+
+function devIdMac(keyMac, transcript, pre) {
+  return createHmac('sha256', Buffer.from(keyMac))
+    .update('unilink-dev-id-v1').update(Buffer.from(transcript)).update(Buffer.from(pre)).digest().subarray(0, 16);
+}
+function pad16(s) {
+  const b = Buffer.from(s.slice(0, 16), 'utf8');
+  return Buffer.concat([b, Buffer.alloc(16 - b.length)]);
+}
+function pad64(s) {
+  const b = Buffer.from(s.slice(0, 64), 'utf8');
+  return Buffer.concat([b, Buffer.alloc(64 - b.length)]);
+}
+function unpad(b) {
+  const z = b.indexOf(0);
+  return Buffer.from(b.subarray(0, z === -1 ? b.length : z)).toString('utf8');
+}
+
+export function deviceIdFromPub(identityPub) {
+  return createHash('sha256').update('unilink-dev-id-v1').update(Buffer.from(identityPub)).digest().subarray(0, 16);
+}
+
+export function deviceIdBody(deviceId, identityPub, name, platform, appVer, caps, transcript, keyMac) {
+  const pre = Buffer.concat([
+    Buffer.from(deviceId), Buffer.from(identityPub),
+    pad64(name), pad16(platform), pad16(appVer),
+    Buffer.from([(caps >> 24) & 0xff, (caps >> 16) & 0xff, (caps >> 8) & 0xff, caps & 0xff]),
+  ]);
+  return Buffer.concat([pre, devIdMac(keyMac, transcript, pre)]);
+}
+
+export function deviceIdParse(body, transcript, keyMac) {
+  const b = Buffer.from(body);
+  if (b.length !== 164) throw new Error(`device_id: bad length ${b.length}`);
+  const pre = b.subarray(0, 148), mac = b.subarray(148);
+  if (!devIdMac(keyMac, transcript, pre).equals(mac)) throw new Error('device_id: mac mismatch');
+  return {
+    deviceId: b.subarray(0, 16),
+    identityPub: b.subarray(16, 48),
+    name: unpad(b.subarray(48, 112)),
+    platform: unpad(b.subarray(112, 128)),
+    appVer: unpad(b.subarray(128, 144)),
+    caps: b.readUInt32BE(144),
+  };
+}
+
+export function deviceAuthBody(decision, sessionId, senderId, transcript, keyMac) {
+  const pre = Buffer.concat([Buffer.from([decision & 0xff]), Buffer.from(sessionId), Buffer.from(senderId)]);
+  const mac = createHmac('sha256', Buffer.from(keyMac))
+    .update('unilink-dev-auth-v1').update(Buffer.from(transcript)).update(pre).digest().subarray(0, 16);
+  return Buffer.concat([pre, mac]);
+}
+
+export function deviceAuthParse(body, transcript, keyMac) {
+  const b = Buffer.from(body);
+  if (b.length !== 49) throw new Error(`device_auth: bad length ${b.length}`);
+  const pre = b.subarray(0, 33), mac = b.subarray(33);
+  const expect = createHmac('sha256', Buffer.from(keyMac))
+    .update('unilink-dev-auth-v1').update(Buffer.from(transcript)).update(pre).digest().subarray(0, 16);
+  if (!expect.equals(mac)) throw new Error('device_auth: mac mismatch');
+  return { decision: b[0], sessionId: b.subarray(1, 17), senderId: b.subarray(17, 33) };
+}
+
+export function resumeReqBody(sessionId, freshPub, resumeNonce, secret) {
+  const pre = Buffer.concat([Buffer.from(sessionId), Buffer.from(freshPub), Buffer.from(resumeNonce)]);
+  const mac = createHmac('sha256', Buffer.from(secret)).update('unilink-resume-v1').update(pre).digest().subarray(0, 16);
+  return Buffer.concat([pre, mac]);
+}
+
+export function resumeReqParse(body, secret) {
+  const b = Buffer.from(body);
+  if (b.length !== 80) throw new Error(`resume_req: bad length ${b.length}`);
+  const pre = b.subarray(0, 64), mac = b.subarray(64);
+  const expect = createHmac('sha256', Buffer.from(secret)).update('unilink-resume-v1').update(pre).digest().subarray(0, 16);
+  if (!expect.equals(mac)) throw new Error('resume_req: mac mismatch');
+  return { sessionId: b.subarray(0, 16), freshPub: b.subarray(16, 48), resumeNonce: b.subarray(48, 64) };
+}
+
+export function resumeOkBody(freshPub, sessionId, reqPub, secret) {
+  const mac = createHmac('sha256', Buffer.from(secret)).update('unilink-resume-v1')
+    .update(Buffer.from(sessionId)).update(Buffer.from(reqPub)).update(Buffer.from(freshPub)).digest().subarray(0, 16);
+  return Buffer.concat([Buffer.from(freshPub), mac]);
+}
+
+export function resumeOkParse(body, sessionId, reqPub, secret) {
+  const b = Buffer.from(body);
+  if (b.length !== 48) throw new Error(`resume_ok: bad length ${b.length}`);
+  const freshPub = b.subarray(0, 32), mac = b.subarray(32);
+  const expect = createHmac('sha256', Buffer.from(secret)).update('unilink-resume-v1')
+    .update(Buffer.from(sessionId)).update(Buffer.from(reqPub)).update(Buffer.from(freshPub)).digest().subarray(0, 16);
+  if (!expect.equals(mac)) throw new Error('resume_ok: mac mismatch');
+  return freshPub;
+}
+
+export function resumeSessionKeys(shared, resumeNonce, sessionId, cipherSel) {
+  const salt = Buffer.concat([Buffer.from(resumeNonce), Buffer.from(sessionId)]);
+  const info = Buffer.concat([Buffer.from('unilink-v1-resume'), Buffer.from([cipherSel])]);
+  const keys = new Uint8Array(hkdfSync('sha256', Buffer.from(shared), salt, info, 64));
+  return { keyAead: keys.slice(0, 32), keyMac: keys.slice(32, 64) };
+}
+
+export function errorBody(fatal, code, msg) {
+  const m = Buffer.from(msg.slice(0, 120), 'utf8');
+  return Buffer.concat([
+    Buffer.from([fatal ? 1 : 0, (code >> 8) & 0xff, code & 0xff,
+      (m.length >> 8) & 0xff, m.length & 0xff]),
+    m,
+  ]);
+}
+
+export function errorParse(body) {
+  const b = Buffer.from(body);
+  if (b.length < 5) throw new Error('error: short body');
+  const code = b.readUInt16BE(1);
+  const mlen = b.readUInt16BE(3);
+  if (b.length < 5 + mlen) throw new Error('error: short message');
+  return { fatal: Boolean(b[0] & 1), code, msg: b.subarray(5, 5 + mlen).toString('utf8') };
+}
+
+// ==================================================== limits + errors (Phase 8/46)
+export class ULPError extends Error {
+  constructor(msg, { code = 0x0004, retryable = false, correlationId = null } = {}) {
+    super(msg);
+    this.name = "ULPError";
+    this.code = code;
+    this.retryable = retryable;
+    this.correlationId = correlationId;
+  }
+}
+export const LIMITS = {
+  MAX_FRAME_BYTES: 0x00100000,
+  MAX_EXTENDED_FRAME_BYTES: 0x00100000,
+  MAX_CONTROL_QUEUE: 128,
+  MAX_PENDING_FRAMES: 4096,
+  MAX_NAME_LEN: 64,
+  MAX_PLATFORM_LEN: 16,
+  MAX_ERROR_MSG_LEN: 120,
+  MAX_RECONNECT_ATTEMPTS: 20,
+  MAX_FILE_SIZE: 64 * 1024 ** 3,
+  MAX_CONCURRENT_FILES: 16,
+  MAX_FILE_CHUNK: 256 * 1024,
+  MAX_PROXY_CONNECTIONS: 64,
+  MAX_SESSION_BUFFER_BYTES: 8 * 1024 ** 2,
+  MAX_HANDSHAKE_TIMEOUT_S: 15,
+  MAX_TRANSPORT_RESELECTS: 5,
+};
+export const RESERVED_FLAGS = 0x05; // F_COMPRESSED | F_FRAG
+
+/** Call on every received frame: reserved flags are never set by a
+ * conformant sender (compression/fragmentation unimplemented; T9). */
+export function enforceLimitsOnReceive(flags) {
+  if (flags & RESERVED_FLAGS) {
+    throw new ULPError(`reserved frame flag 0x${flags.toString(16)}`,
+      { code: 0x0004 });
+  }
 }

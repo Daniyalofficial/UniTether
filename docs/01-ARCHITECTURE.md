@@ -6,6 +6,16 @@
    ADB, LAN TCP, Wi-Fi Direct and Bluetooth PAN. Transport is a
    swappable, liveness-managed layer; everything above it is blind to
    the wire.
+   - *Implemented (host):* `unilink_transport::Transport` trait
+     (frame/raw read+write, shutdown, name) + `Framed<S>` — the single
+     byte-stream reassembly for any `Read + Write` stream
+     (`StreamDeadline` opts in to read deadlines; `TcpStream` does).
+     `FramedConn` = `Framed<TcpStream>` + TCP connect/listen/shutdown;
+     the ULP session is `Session<T: Transport>` — transport-agnostic.
+     A future QUIC/relay transport is an adapter behind the same
+     trait (experimental, not yet implemented). Invariant: frame path
+     and raw path share one byte reservoir, so TCP-coalesced frames
+     can never be dropped between the handshake and encrypted phases.
 2. **Host = engine, device = appliance.** The heavy lifting (TUN,
    proxy, stats, scheduling) lives on the host in Rust. The Android app
    is a permission-aware appliance (VPN, capture, audio) that speaks

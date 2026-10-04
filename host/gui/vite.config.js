@@ -13,4 +13,11 @@ export default defineConfig({
     hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
     watch: { ignored: ["**/src-tauri/**"] },
   },
+  preview: {
+    port: 5173,
+    strictPort: true,
+    host: true,
+    // Static design-preview server only; the Tauri build never uses `preview`.
+    allowedHosts: true,
+  },
 });

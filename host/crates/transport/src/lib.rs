@@ -1,7 +1,9 @@
 //! `unilink-transport` — ULP transports: TCP framing, ULP session
 //! (handshake + AEAD), ADB port forwarding, mDNS discovery.
 
+pub mod scheduler;
 pub mod adb;
+pub mod transport;
 pub mod mdns;
 pub mod rand;
 pub mod session;
@@ -11,3 +13,4 @@ pub use adb::{adb_available, AdbForward};
 pub use mdns::{MdnsAdvertiser, MdnsPeer, MdnsResponder};
 pub use session::{Session, SessionInfo};
 pub use tcp::{listen, FramedConn};
+pub use transport::{Framed, StreamDeadline, Transport};

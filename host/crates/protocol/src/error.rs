@@ -27,6 +27,65 @@ pub enum ErrorKind {
     CipherNegotiation,
     Timeout,
     Io,
+    // v1.1 structured codes (docs/02 §15.4)
+    Limit,
+    IdentityRequired,
+    Throttled,
+    Revoked,
+    ResumeInvalid,
+    UpgradeRequired,
+}
+
+/// Stable wire error codes (ULP v1.1, append-only).
+pub mod codes {
+    pub const AUTH: u16 = 0x0001;
+    pub const CIPHER: u16 = 0x0002;
+    pub const VERSION: u16 = 0x0003;
+    pub const FORMAT: u16 = 0x0004;
+    pub const LIMIT: u16 = 0x0005;
+    pub const TIMEOUT: u16 = 0x0006;
+    pub const IDENTITY_REQUIRED: u16 = 0x0007;
+    pub const THROTTLED: u16 = 0x0008;
+    pub const REVOKED: u16 = 0x0009;
+    pub const RESUME_INVALID: u16 = 0x000A;
+    pub const UPGRADE_REQUIRED: u16 = 0x000B;
+}
+
+impl ErrorKind {
+    /// Stable wire code (docs/02 §15.4).
+    pub const fn code(self) -> u16 {
+        match self {
+            ErrorKind::BadMagic => codes::FORMAT,
+            ErrorKind::BadVersion => codes::VERSION,
+            ErrorKind::BadLength => codes::FORMAT,
+            ErrorKind::Incomplete => codes::FORMAT,
+            ErrorKind::BadChannel => codes::FORMAT,
+            ErrorKind::WrongDirection => codes::FORMAT,
+            ErrorKind::BadMessage => codes::FORMAT,
+            ErrorKind::BadPayload => codes::FORMAT,
+            ErrorKind::Auth => codes::AUTH,
+            ErrorKind::CipherNegotiation => codes::CIPHER,
+            ErrorKind::Timeout => codes::TIMEOUT,
+            ErrorKind::Io => codes::TIMEOUT,
+            ErrorKind::Limit => codes::LIMIT,
+            ErrorKind::IdentityRequired => codes::IDENTITY_REQUIRED,
+            ErrorKind::Throttled => codes::THROTTLED,
+            ErrorKind::Revoked => codes::REVOKED,
+            ErrorKind::ResumeInvalid => codes::RESUME_INVALID,
+            ErrorKind::UpgradeRequired => codes::UPGRADE_REQUIRED,
+        }
+    }
+
+    /// Safe to retry the operation.
+    pub const fn retryable(self) -> bool {
+        matches!(self, ErrorKind::Incomplete | ErrorKind::Timeout | ErrorKind::Io)
+    }
+}
+
+impl ProtocolError {
+    pub fn code(&self) -> u16 {
+        self.kind.code()
+    }
 }
 
 impl std::fmt::Display for ProtocolError {

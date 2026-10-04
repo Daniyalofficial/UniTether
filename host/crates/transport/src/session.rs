@@ -26,7 +26,7 @@ use unilink_protocol::message::{
 };
 
 use crate::rand::random_bytes;
-use crate::tcp::FramedConn;
+use crate::transport::Transport;
 
 pub const DEFAULT_FEATURES: u16 = FEAT_DUAL_STACK | FEAT_VIDEO | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7);
 
@@ -37,8 +37,8 @@ pub struct SessionInfo {
     pub cipher_sel: u8,
 }
 
-pub struct Session {
-    pub conn: FramedConn,
+pub struct Session<T: Transport> {
+    pub conn: T,
     pub info: SessionInfo,
     direction: u8,          // 0 = host side, 1 = device side
     tx_counter: u64,
@@ -48,10 +48,11 @@ pub struct Session {
     ping_seq: u64,
 }
 
-impl Session {
+impl<T: Transport> Session<T> {
     // ------------------------------------------------------- handshake
-    /// Host role: connect, send HELLO, verify HELLO_ACK, mutual AUTH_OK.
-    pub fn connect_host(conn: FramedConn, secret: &[u8; 32]) -> Result<Self> {
+    /// Host role: send HELLO, verify HELLO_ACK, mutual AUTH_OK.
+    /// Transport-agnostic: any `Transport` (TCP today, QUIC/relay later).
+    pub fn connect_host(conn: T, secret: &[u8; 32]) -> Result<Self> {
         let priv_key = random_bytes(32);
         let mut priv_key: [u8; 32] = [0; 32];
         priv_key.copy_from_slice(&priv_key);
@@ -60,7 +61,7 @@ impl Session {
 
         let hello = Hello::build(ROLE_HOST, DEFAULT_FEATURES, CIPHER_INTEROP,
                                  pub_key, nonce_a, secret);
-        let mut sess = Session {
+        let mut sess: Self = Session {
             conn,
             info: SessionInfo { peer_role: ROLE_HOST, peer_features: 0, cipher_sel: 0 },
             direction: 0,
@@ -93,13 +94,13 @@ impl Session {
     }
 
     /// Device role: verify HELLO, send HELLO_ACK, mutual AUTH_OK.
-    pub fn accept_device(conn: FramedConn, secret: &[u8; 32]) -> Result<Self> {
+    pub fn accept_device(conn: T, secret: &[u8; 32]) -> Result<Self> {
         let priv_bytes = random_bytes(32);
         let mut priv_key: [u8; 32] = [0; 32];
         priv_key.copy_from_slice(&priv_bytes);
         let pub_key = x25519_public(&priv_key);
 
-        let mut sess = Session {
+        let mut sess: Self = Session {
             conn,
             info: SessionInfo { peer_role: ROLE_HOST, peer_features: 0, cipher_sel: 0 },
             direction: 1,
@@ -272,6 +273,7 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tcp::FramedConn;
     use std::io::{Read, Write};
     use std::net::TcpStream;
 

@@ -73,15 +73,39 @@ HKDF_INFO = b"unilink-v1"
 
 
 class ProtocolError(Exception):
-    """Fatal protocol violation (tear down the session)."""
+    """Fatal protocol violation (tear down the session).
+
+    Structured-error contract (Phase 46 / docs/02 §15.4):
+      .code           stable wire code (ulp_v11.ERR_*)
+      .retryable      safe to retry the operation
+      .correlation_id session-level id for log joining (optional)
+    """
+
+    code = 0x0004          # ERR_FORMAT by default
+    retryable = False
+
+    def __init__(self, msg: str = "", correlation_id: str = None):
+        super().__init__(msg)
+        self.correlation_id = correlation_id
+
+    @property
+    def severity(self) -> str:
+        return "fatal"
 
 
 class FramingError(ProtocolError):
-    pass
+    code = 0x0004          # ERR_FORMAT
+    retryable = False
 
 
 class AuthError(ProtocolError):
-    pass
+    code = 0x0001          # ERR_AUTH
+    retryable = False
+
+
+class TimeoutError_(ProtocolError):
+    code = 0x0006          # ERR_TIMEOUT
+    retryable = True
 
 
 # ---------------------------------------------------------------- X25519
@@ -264,7 +288,7 @@ class Frame:
 
     @classmethod
     def decode(cls, data: bytes, off: int = 0) -> "Frame":
-        if len(data) - off < 8:
+        if len(data) - off < 7:
             raise FramingError("short header")
         m0, m1 = data[off], data[off + 1]
         ver, ch, flg = data[off + 2], data[off + 3], data[off + 4]

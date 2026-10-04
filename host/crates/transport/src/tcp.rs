@@ -1,17 +1,19 @@
 //! Framed ULP transport over a TCP stream (byte-stream reassembly).
+//!
+//! The framing itself lives in [`crate::transport::Framed`] (shared
+//! with any future byte-stream transport); this module is the TCP
+//! adapter: connect/listen + address accessors + real shutdown.
 
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::time::Duration;
 
-use unilink_protocol::error::{ErrorKind, ProtocolError, Result};
-use unilink_protocol::frame::{decode, Frame};
+use unilink_protocol::error::Result;
+use unilink_protocol::frame::Frame;
 
-const MAX_READ: usize = 256 * 1024;
+use crate::transport::{Framed, Transport};
 
 pub struct FramedConn {
-    stream: TcpStream,
-    rx: Vec<u8>,
+    inner: Framed<TcpStream>,
 }
 
 impl FramedConn {
@@ -19,107 +21,46 @@ impl FramedConn {
         let stream = TcpStream::connect(addr)?;
         stream.set_nodelay(true)?;
         stream.set_keepalive(true)?;
-        Ok(Self { stream, rx: Vec::with_capacity(64 * 1024) })
+        Ok(Self { inner: Framed::new(stream, "tcp") })
     }
 
     pub fn from_stream(stream: TcpStream) -> std::io::Result<Self> {
         stream.set_nodelay(true)?;
         stream.set_keepalive(true)?;
-        Ok(Self { stream, rx: Vec::with_capacity(64 * 1024) })
+        Ok(Self { inner: Framed::new(stream, "tcp") })
     }
 
-    pub fn local_addr(&self) -> std::io::Result<std::net::SocketAddr> {
-        self.stream.local_addr()
+    pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.inner.as_stream().local_addr()
     }
-    pub fn remote_addr(&self) -> std::io::Result<std::net::SocketAddr> {
-        self.stream.peer_addr()
+    pub fn remote_addr(&self) -> std::io::Result<SocketAddr> {
+        self.inner.as_stream().peer_addr()
     }
+    pub fn into_stream(self) -> TcpStream { self.inner.into_inner() }
+}
 
-    /// Read exactly one frame, waiting up to `timeout` for data.
-    pub fn read_frame(&mut self, timeout: Duration) -> Result<Frame> {
-        loop {
-            match decode(&self.rx, 0) {
-                Ok((frame, off)) => {
-                    self.rx.drain(..off);
-                    if self.rx.len() > 1024 * 1024 { self.rx.shrink_to_fit(); }
-                    return Ok(frame);
-                }
-                Err(e) if e.kind == ErrorKind::Incomplete => {}
-                Err(e) => return Err(e),
-            }
-            if self.rx.len() > MAX_READ * 2 {
-                return Err(ProtocolError::new(ErrorKind::BadLength,
-                    "rx buffer overgrown (peer not speaking ULP?)"));
-            }
-            self.stream
-                .set_read_timeout(Some(timeout))
-                .map_err(|e| ProtocolError::new(ErrorKind::Io, e.to_string()))?;
-            let mut buf = vec![0u8; MAX_READ];
-            match self.stream.read(&mut buf) {
-                Ok(0) => {
-                    return Err(ProtocolError::new(ErrorKind::Io,
-                        "connection closed by peer"));
-                }
-                Ok(n) => self.rx.extend_from_slice(&buf[..n]),
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    return Err(ProtocolError::new(ErrorKind::Timeout,
-                        "read timeout"));
-                }
-                Err(e) => return Err(ProtocolError::new(ErrorKind::Io, e.to_string())),
-            }
-        }
+impl Transport for FramedConn {
+    fn read_frame(&mut self, timeout: Duration) -> Result<Frame> {
+        self.inner.read_frame(timeout)
     }
-
-    pub fn write_frame(&mut self, frame: &Frame) -> Result<()> {
-        let wire = frame.encode();
-        self.stream
-            .write_all(&wire)
-            .map_err(|e| ProtocolError::new(ErrorKind::Io, e.to_string()))?;
-        self.stream
-            .flush()
-            .map_err(|e| ProtocolError::new(ErrorKind::Io, e.to_string()))
+    fn write_frame(&mut self, frame: &Frame) -> Result<()> {
+        self.inner.write_frame(frame)
     }
-
-    /// Send the exact raw bytes (used for the encrypted send path).
-    pub fn write_raw(&mut self, data: &[u8]) -> Result<()> {
-        self.stream
-            .write_all(data)
-            .map_err(|e| ProtocolError::new(ErrorKind::Io, e.to_string()))?;
-        self.stream
-            .flush()
-            .map_err(|e| ProtocolError::new(ErrorKind::Io, e.to_string()))
+    fn write_raw(&mut self, data: &[u8]) -> Result<()> {
+        self.inner.write_raw(data)
     }
-
-    /// Read exactly `n` raw bytes (handshake path).
-    pub fn read_exact(&mut self, n: usize, timeout: Duration) -> Result<Vec<u8>> {
-        self.stream
-            .set_read_timeout(Some(timeout))
-            .map_err(|e| ProtocolError::new(ErrorKind::Io, e.to_string()))?;
-        let mut out = vec![0u8; n];
-        let mut filled = 0usize;
-        while filled < n {
-            match self.stream.read(&mut out[filled..]) {
-                Ok(0) => {
-                    return Err(ProtocolError::new(ErrorKind::Io,
-                        "connection closed by peer"));
-                }
-                Ok(k) => filled += k,
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    return Err(ProtocolError::new(ErrorKind::Timeout,
-                        "read timeout"));
-                }
-                Err(e) => {
-                    return Err(ProtocolError::new(ErrorKind::Io, e.to_string()))
-                }
-            }
-        }
-        Ok(out)
+    fn read_exact(&mut self, n: usize, timeout: Duration) -> Result<Vec<u8>> {
+        self.inner.read_exact(n, timeout)
     }
-
-    pub fn shutdown(&mut self) {
-        let _ = self.stream.shutdown(std::net::Shutdown::Both);
+    fn shutdown(&mut self) {
+        let _ = self
+            .inner
+            .as_stream_mut()
+            .shutdown(std::net::Shutdown::Both);
     }
-    pub fn into_stream(self) -> TcpStream { self.stream }
+    fn name(&self) -> &'static str {
+        "tcp"
+    }
 }
 
 pub fn listen(addr: &str) -> std::io::Result<TcpListener> {

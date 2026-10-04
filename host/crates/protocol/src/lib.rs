@@ -17,10 +17,14 @@
 pub mod channel;
 pub mod crypto;
 pub mod error;
+pub mod event;
 pub mod frame;
 pub mod handshake;
+pub mod limits;
 pub mod message;
 pub mod pairing;
+pub mod state;
+pub mod state_gen;
 
 pub use error::{ErrorKind, ProtocolError};
 pub use frame::{ch, decode, Frame, MAGIC0, MAGIC1, MAX_PAYLOAD, VERSION};

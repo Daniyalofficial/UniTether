@@ -1,0 +1,115 @@
+{
+  "constants": {
+    "decisions": {
+      "revoked": 2,
+      "throttled": 3,
+      "trusted": 0,
+      "trusted_new": 1
+    },
+    "err_codes": {
+      "auth": 1,
+      "cipher": 2,
+      "format": 4,
+      "identity_required": 7,
+      "limit": 5,
+      "resume_invalid": 10,
+      "revoked": 9,
+      "throttled": 8,
+      "timeout": 6,
+      "upgrade_required": 11,
+      "version": 3
+    },
+    "feat_versioned": 256,
+    "msg_device_auth": 18,
+    "msg_device_id": 17,
+    "msg_resume_ok": 19,
+    "msg_resume_req": 14
+  },
+  "negatives": [
+    {
+      "expect": "mac mismatch",
+      "kind": "device_id",
+      "tamper": "last_byte"
+    },
+    {
+      "expect": "mac mismatch",
+      "kind": "device_id",
+      "tamper": "transcript"
+    },
+    {
+      "expect": "mac mismatch",
+      "kind": "resume_req",
+      "tamper": "wrong_secret"
+    },
+    {
+      "expect": "mac mismatch",
+      "kind": "resume_ok",
+      "tamper": "wrong_req_pub"
+    },
+    {
+      "expect": "mac mismatch",
+      "kind": "device_auth",
+      "tamper": "wrong_key"
+    }
+  ],
+  "protocol": "unilink-v11",
+  "vectors": [
+    {
+      "app_ver": "0.2.0",
+      "caps": 13,
+      "device_id": "8e6ada07543d947f5821fbbe1cad7a80",
+      "expected": "8e6ada07543d947f5821fbbe1cad7a80d3b0187b9afbc46a8f27be5c75f6a13fbf6d431e18364a2a486b39b0c7a2e200506978656c2038000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000616e64726f6964000000000000000000302e322e3000000000000000000000000000000d3f30105fc0a1bf90e31d3e9b59eb129f",
+      "identity_pub": "d3b0187b9afbc46a8f27be5c75f6a13fbf6d431e18364a2a486b39b0c7a2e200",
+      "key_mac": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+      "kind": "device_id",
+      "name": "Pixel 8",
+      "platform": "android",
+      "transcript": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    },
+    {
+      "decision": 1,
+      "expected": "010102030405060708090a0b0c0d0e0f108e6ada07543d947f5821fbbe1cad7a80fc7cd2204cce30ab16dd3f5aebf7c883",
+      "key_mac": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+      "kind": "device_auth",
+      "name": "device_auth",
+      "sender_id": "8e6ada07543d947f5821fbbe1cad7a80",
+      "session_id": "0102030405060708090a0b0c0d0e0f10",
+      "transcript": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    },
+    {
+      "expected": "0102030405060708090a0b0c0d0e0f10d3b0187b9afbc46a8f27be5c75f6a13fbf6d431e18364a2a486b39b0c7a2e200f0f1f2f3f4f5f6f7f8f9fafbfcfdfeffe28f75b3ee355d91fe206ee2b8d4b6b2",
+      "fresh_pub": "d3b0187b9afbc46a8f27be5c75f6a13fbf6d431e18364a2a486b39b0c7a2e200",
+      "kind": "resume_req",
+      "name": "resume_req",
+      "resume_nonce": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "secret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "session_id": "0102030405060708090a0b0c0d0e0f10"
+    },
+    {
+      "expected": "d3b0187b9afbc46a8f27be5c75f6a13fbf6d431e18364a2a486b39b0c7a2e2005b5af24e548bc0821ae408b3c078b047",
+      "fresh_pub": "d3b0187b9afbc46a8f27be5c75f6a13fbf6d431e18364a2a486b39b0c7a2e200",
+      "kind": "resume_ok",
+      "name": "resume_ok",
+      "req_pub": "d3b0187b9afbc46a8f27be5c75f6a13fbf6d431e18364a2a486b39b0c7a2e200",
+      "secret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "session_id": "0102030405060708090a0b0c0d0e0f10"
+    },
+    {
+      "code": 8,
+      "expected": "0100080011746f6f206d616e7920617474656d707473",
+      "fatal": true,
+      "kind": "error",
+      "msg": "too many attempts",
+      "name": "error_throttled"
+    },
+    {
+      "code": 5,
+      "expected": "000005000a71756575652066756c6c",
+      "fatal": false,
+      "kind": "error",
+      "msg": "queue full",
+      "name": "error_nonfatal_limit"
+    }
+  ],
+  "version": 1
+}
