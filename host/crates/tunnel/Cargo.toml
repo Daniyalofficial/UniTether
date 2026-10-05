@@ -10,11 +10,5 @@ repository.workspace = true
 [dependencies]
 unilink-protocol = { path = "../protocol" }
 
-# Windows-only TUN API bindings (never compiled on Linux/macOS CI).
-[target.'cfg(windows)'.dependencies]
-windows = { version = "0.56", features = [
-    "Win32_Foundation",
-    "Win32_Networking_Tun",
-    "Win32_System_LibraryLoader",
-    "Win32_Storage_FileSystem",
-] }
+# Windows TUN uses raw FFI against wintun.dll (see src/tun_windows.rs) —
+# no external crate needed.

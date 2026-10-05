@@ -97,7 +97,7 @@ impl TunMacos {
 
 impl TunDevice for TunMacos {
     fn name(&self) -> &str { &self.name }
-    fn fd(&self) -> Option<RawFd> { Some(self.fd()) }
+    fn raw_handle(&self) -> Option<std::os::raw::c_int> { Some(self.fd()) }
 
     fn read_packet(&mut self) -> io::Result<Vec<u8>> {
         let mut buf = vec![0u8; 65536];

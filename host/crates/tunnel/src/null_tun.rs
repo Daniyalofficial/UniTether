@@ -49,7 +49,7 @@ impl NullTun {
 
 impl TunDevice for NullTun {
     fn name(&self) -> &str { &self.name }
-    fn fd(&self) -> Option<std::os::unix::io::RawFd> { None }
+    fn raw_handle(&self) -> Option<std::os::raw::c_int> { None }
 
     fn read_packet(&mut self) -> io::Result<Vec<u8>> {
         let mut s = self.state.lock().unwrap();

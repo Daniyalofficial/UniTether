@@ -5,7 +5,7 @@
 | Criterion | Rust | Go | C++ |
 |---|---|---|---|
 | Zero-copy framing perf | ✅ SIMD-friendly, no GC pauses | ~ good, GC jitter (ms-scale) | ✅ |
-| TUN / syscalls | ✅ `libc`/`windows-sys`, safe wrappers | ✅ via `golang.org/x/sys` | ✅ |
+| TUN / syscalls | ✅ std-only raw FFI (unix `ioctl`, WinTun C API) | ✅ via `golang.org/x/sys` | ✅ |
 | Memory safety (no root = trust surface) | ✅ compile-time | ✅ runtime | ❌ manual |
 | Single static binary (all 3 OS) | ✅ | ✅ (CGO off) | ~ toolchain per OS |
 | Concurrency model for per-packet paths | ✅ threads + `tokio`, no stop-the-world | ✅ goroutines (GOMAXPROCS) | ~ manual |
