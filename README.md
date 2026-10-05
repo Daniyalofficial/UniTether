@@ -1,238 +1,197 @@
 # UniTether
 
-> **The complete bridge between your phone and your computer — internet,
-> screen, sound, files, clipboard and more. No root. One app. One cable
-> (or none).**
+> **The complete bridge between your phone and your computer — internet
+> first, screen/sound/files next. No root. One APK + one desktop app.**
 
-UniTether starts where [Gnirehtet](https://github.com/Genymobile/gnirehtet)
-ended and refuses to stop: it keeps the proven core — *reverse tethering
-over a no-root Android `VPNService` into a host TUN device* — and grows it
-into a full device-bridge suite: dual-stack networking, wireless
-transports, low-latency screen mirroring, bidirectional audio, and
-desktop-class productivity features.
+UniTether keeps the proven [Gnirehtet](https://github.com/Genymobile/gnirehtet)
+baseline — *reverse tethering over a no-root Android `VPNService` into a host
+TUN device* — and grows it: a versioned, cryptographic protocol (ULP v1.1),
+identity-based pairing, QoS scheduling, host proxy, and a real desktop GUI.
 
-*Gnirehtet, grown up.*
+**Status: v0.2.0-dev.** Networking is implemented and tested end-to-end;
+the GUI is complete; screen/audio/input/file/SMS/camera channels are
+protocol-complete with device services in place and host-side rendering
+in progress. Nothing below is claimed beyond what is built and tested —
+see [`docs/27-FINAL-PRODUCTION-READINESS.md`](docs/27-FINAL-PRODUCTION-READINESS.md)
+for the full IMPLEMENTED / PARTIAL / BLOCKED matrix.
 
 ---
 
-## Elevator pitch
+## Feature status (honest)
 
-**Gnirehtet** gives your Android phone the computer's internet over USB.
-It stopped there in 2022: IPv4 only, USB only, no screen, no sound, no GUI,
-and an abandoned codebase.
-
-**UniTether** gives your phone *everything* the computer has — and gives
-the computer the phone's camera, mic, screen and notifications:
-
-| Capability | Gnirehtet | UniTether |
-|---|:---:|:---:|
-| Reverse tethering (USB/ADB) | ✅ | ✅ improved (auto-stop on unplug) |
-| IPv4 | ✅ | ✅ |
-| IPv6 | ❌ (not planned) | ✅ dual-stack |
-| Wireless (Wi-Fi Direct / BT-PAN / LAN) | ❌ | ✅ + mDNS discovery + QR pairing |
-| ICMP / ping | ❌ | ✅ raw passthrough |
-| SOCKS5 / HTTP proxy on host | ❌ | ✅ |
-| Network throttling (2G–5G, loss, latency) | ❌ | ✅ |
-| Screen mirroring (H.264/HEVC, <50 ms LAN) | ❌ | ✅ |
-| Audio both directions (Opus) | ❌ | ✅ |
-| Touch/mouse/keyboard injection | ❌ | ✅ |
-| Clipboard / notifications / files / SMS | ❌ | ✅ |
-| GUI (Win/macOS/Linux) | ❌ | ✅ Tauri + Svelte |
-| Actively maintained | ❌ | ✅ |
+| Capability | Status | Notes |
+|---|---|---|
+| Reverse tethering (no-root `VPNService` → host TUN) | ✅ implemented, tested | ADB + LAN/TCP transports, e2e on real TCP |
+| Protocol ULP v1 + v1.1 | ✅ implemented, tested | X25519 pairing, replay cache, nonce mgmt, downgrade floor; 83+107+54 vectors |
+| Pairing (QR → verify → authorize → connect) | ✅ implemented | identity-based (stable ID + pubkey + trust registry), never name-based |
+| Session state machine + limits | ✅ implemented, tested | 12 states, 107 state tests; hard limits on every network-controlled value |
+| QoS channel scheduler | ✅ implemented, tested | CONTROL > INPUT > AUDIO > VIDEO > FILE, no starvation (732 tests) |
+| Dual-stack tunnel (IPv4 + IPv6) + custom DNS | ✅ implemented | Gnirehtet had IPv4 only |
+| ICMP / raw IP passthrough | ✅ implemented | ping/traceroute work over TUN |
+| Host proxy (SOCKS5 + HTTP, bypass list) | ✅ implemented | forwards host apps into the tunnel |
+| GUI (Tauri 2 + Svelte) | ✅ implemented, builds clean | Dashboard / Devices / Pairing / Settings, live stats, 6 locales incl. RTL |
+| i18n (en/ur/ar/es/zh/hi) | ✅ implemented + automated | Android strings + GUI catalogs checked in CI (keys/placeholders/RTL) |
+| File transfer | ✅ protocol + engine (v2) | chunking, SHA-256, 10 GB @ 97 % resume verified by test; UI panel pending |
+| Screen mirroring | 🟡 partial | device capture (MediaProjection + H.264) and video channel implemented; host decoder/renderer pending |
+| Audio (Opus, both directions) | 🟡 partial | device bridge + JNI (opus or stub) and audio channel implemented; host playback pending |
+| Remote input (touch/keys/text) | 🟡 partial | `InputInjector` + input channel implemented; host-side driver pending |
+| Clipboard / notifications / SMS reply | 🟡 partial | device bridges implemented over ULP channels; host consumers pending |
+| Camera as host webcam | 🟡 partial | device bridge implemented; host UVC pending |
+| mDNS auto-discovery + ADB discovery | ✅ implemented | `_unilink._tcp` + `adb devices` on the host |
+| Wireless: Wi-Fi Direct / BT-PAN | ⬜ planned | not started; LAN + ADB cover v0.2 |
+| Network throttling (2G–5G profiles) | ⬜ planned | not started (QoS scheduler is per-channel, not a link shaper) |
+| Cloud/relay | ⬜ planned (optional by design) | local-only must always work; relay would never see plaintext |
 
 **Constraints honored:** no root anywhere, Android 5.0 (API 21)+,
-Windows 10+ / macOS 11+ / Ubuntu 20.04+, <50 ms mirroring latency on LAN,
-25+ Mbps headroom for 1080p60 (4K60 with HEVC/AV1 on fast links),
-<10 % battery per hour in tether-only mode.
+host targets Windows 10+ / macOS 11+ / Ubuntu 20.04+.
 
 ---
 
-## Repository tree
+## Repository tree (actual)
 
 ```
 UniTether/
-├── README.md                  ← you are here
-├── LICENSE                    Apache-2.0
-├── NOTICE                     Gnirehtet baseline acknowledgment
-├── SECURITY.md                threat model + reporting
-├── CHANGELOG.md
-├── docs/                      ← deep documentation (deliverables)
-│   ├── 01-ARCHITECTURE.md     components, Mermaid diagrams, data flow
-│   ├── 02-PROTOCOL.md         UniLink Protocol v1 — full binary spec
-│   ├── 03-ROADMAP.md          6-month plan, weekly milestones
-│   ├── 04-TECHSTACK.md        Rust vs Go vs C++ (and why Tauri+Kotlin)
-│   ├── 05-COMPETITIVE.md      feature matrix vs 10 competitors
-│   ├── 06-RISK.md             risk register + mitigations
-│   ├── 07-TEAM.md             team size, roles, hiring order
-│   ├── 08-MVP.md              3-month MVP cut line
-│   ├── 09-MARKETING.md        go-to-market + launch plan
-│   ├── 10-OPEN-SOURCE.md      license strategy (Apache-2.0, dual track)
-│   ├── 11-TESTING.md          test pyramid, CI matrix, coverage gates
-│   ├── 12-BENCHMARKS.md       benchmark methodology + vs Gnirehtet
-│   ├── 13-INSTALLERS.md       MSI/DMG/AppImage/DEB/APK + auto-update
-│   ├── 14-ACKNOWLEDGMENTS.md  how we credit Gnirehtet (etiquette)
-│   ├── 15-I18N.md             localization plan (en/ur/ar/es/zh/hi)
-│   └── 16-SECURITY-AUDIT.md   pre-1.0 audit plan
-├── protocol/
-│   └── vectors/               canonical protocol test vectors (JSON)
-├── host/                      ← Rust workspace (the engine)
-│   ├── Cargo.toml
-│   ├── rust-toolchain.toml
-│   └── crates/
-│       ├── protocol/          ULP framing/codec — std-only, vector-tested
-│       ├── transport/         ADB / TCP / Wi-Fi Direct / mDNS / pairing
-│       ├── tunnel/            TUN engine, dual-stack, throttle, stats, ICMP
-│       ├── proxy/             SOCKS5 + HTTP
-│       └── unitether/         CLI binary
-│   └── gui/                   Tauri 2 + Svelte 4 desktop app
-│       ├── src/               Svelte components + TS protocol helpers
-│       └── src-tauri/         Rust shell (tauri commands, session state)
-├── device/                    ← Android app (Kotlin + NDK, no root)
-│   ├── settings.gradle.kts / build.gradle.kts / gradle.properties
-│   ├── native/                libopus JNI glue (C) + CMakeLists
+├── README.md
+├── LICENSE / NOTICE / SECURITY.md / CHANGELOG.md / CONTRIBUTING.md
+├── Makefile                     ← make test / i18n / gui / gui-build / android
+├── docs/
+│   ├── 01..15                   architecture, protocol spec, testing, i18n, …
+│   ├── 16-SECURITY-AUDIT.md     pre-1.0 audit status
+│   ├── 26-DIFFERENTIATION.md
+│   ├── 27-FINAL-PRODUCTION-READINESS.md   ← implemented/partial/blocked matrix
+│   └── 28-QUICKSTART.md         ← what to start, in what order, how to use each screen
+├── protocol/vectors/            canonical protocol test vectors (JSON)
+├── host/
+│   ├── Cargo.toml               Rust workspace
+│   ├── crates/
+│   │   ├── protocol/            ULP framing/codec — std-only, vector-tested
+│   │   ├── transport/           Transport trait, Framed reservoir, Session<T>
+│   │   ├── tunnel/              TUN engine (linux/macos/windows + null)
+│   │   ├── proxy/               SOCKS5 + HTTP host proxy
+│   │   └── unitether/           CLI binary
+│   └── gui/                     Tauri 2 + Svelte 4 desktop app
+│       ├── src/                 views (Dashboard/Devices/Pairing/Settings),
+│       │                        store, backend adapter (real Tauri ↔ labelled sim)
+│       └── src-tauri/           commands: list_devices, connect, disconnect,
+│                                tunnel_config, proxy_config, get_stats, get_pairing
+├── device/                      Android app (Kotlin, no root, minSdk 21)
+│   ├── gradlew                  (official Gradle 8.5 wrapper)
 │   └── app/src/main/
 │       ├── AndroidManifest.xml
-│       ├── res/               layouts, themes, values{,ur,ar,es,zh-rCN,hi}
-│       └── java/com/unilink/unitether/
-│           ├── app/            Application, DI, prefs
-│           ├── service/        SessionForegroundService
-│           ├── net/            UniVpnService (dual-stack), ProtocolConnection,
-│           │                   transports (ADB/LAN/WiFiDirect/BtPan), Discovery
-│           ├── mirror/         MediaProjection capture, C2 H.264 encoder,
-│           │                   adaptive bitrate controller
-│           ├── audio/          AudioBridge (Opus, bidirectional, mute)
-│           ├── input/          InputAccessibilityService (dispatchGesture)
-│           ├── prod/           ClipboardSync, NotificationMirror,
-│           │                   FileTransfer, SmsBridge, Screenshot
-│           ├── pair/           PairingActivity (QR)
-│           └── ui/             MainActivity (Compose), screens, theme
+│       ├── res/                 values{,ur,ar,es,zh,hi}/strings.xml — 6 locales
+│       ├── jni/opus_jni.c       Opus JNI (passthrough stub if libopus absent)
+│       └── java/com/unilink/
+│           ├── core/            ULP v1+v1.1 codec, crypto, channels, pairing,
+│           │                    trust registry, session state
+│           ├── transport/       DeviceTransport (TCP/ADB), mDNS advertise
+│           ├── tunnel/          TunnellingService (no-root VPNService)
+│           ├── mirror/          MirroringService, ScreenCapturer
+│           ├── audio/           AudioBridgeService, OpusJni
+│           ├── camera/          CameraBridge
+│           ├── input/           InputInjector
+│           ├── productivity/    BootReceiver, ClipboardBridge, FileTransfer,
+│           │                    NotificationMirror, SmsReplier
+│           └── ui/              PairingQr
 ├── tests/
-│   ├── protocol/              Python reference implementation (stdlib only)
-│   ├── node/                  TypeScript codec conformance (node, no deps)
-│   └── e2e/                   full protocol e2e simulation (runs locally!)
-├── benchmarks/                iperf3/ping methodology + result templates
-├── packaging/                 deb/rpm/aur/homebrew/winget/wix + update meta
-└── .github/workflows/         ci.yml, android.yml, release.yml
+│   ├── protocol/                Python reference (stdlib only): vectors, state,
+│   │                            v1.1, limits, scheduler, obs, session, file,
+│   │                            security, fuzz (7 targets)
+│   ├── node/                    JS codec conformance (212 assertions, no deps)
+│   ├── e2e/                     real-TCP e2e, resume, chaos (20 scenarios)
+│   └── i18n/                    Android + GUI i18n consistency checkers
+├── benchmarks/                  loopback benchmark (245 µs frame path)
+├── packaging/                   android-ndk.sh (libopus cross-compile + APK)
+└── .github/workflows/ci.yml     5 jobs: protocol, rust, android, gui, benchmarks
 ```
 
-**≈ 18,000 lines of code across ~120 files** (Rust ~6.5 k, Kotlin ~4 k,
-Svelte/TS ~2.2 k, Python/Node reference + tests ~2.4 k, docs/config the rest).
+≈ 18,400 lines of code (Rust 6.1 k, Kotlin 3.2 k, GUI 0.9 k, tests 8.1 k).
 
 ---
 
-## Quickstart
+## Quickstart — what to start, in what order
 
-### 0. Prerequisites
-- **Host**: Rust 1.79+, Node 20+ (GUI), Linux (20.04+) / macOS 11+ / Win 10+.
-  On Linux: `sudo usermod -aG $USER netdev` (TUN access) — or run as root
-  for the first test.
-- **Device**: Android 5.0+ with **USB debugging** (ADB transport) or on the
-  same LAN (wireless transports). No root.
-- **Android build** (optional, to build the APK yourself): JDK 17 +
-  Android SDK 34, then `cd device && ./gradlew assembleDebug`.
+Full walkthrough (every screen, real-hardware order, dev commands):
+**[`docs/28-QUICKSTART.md`](docs/28-QUICKSTART.md)**. The short version:
 
-### 1. Build the host
-```bash
-cd host
-cargo build --release          # → target/release/unitether
-cargo test --workspace         # protocol vectors, tunnel, throttle, proxy
+### A. Try the GUI now (browser, no install)
+
+Open the live preview — you get the full UI against a clearly-labelled
+**simulation** (badge always visible): Devices → Connect → Pairing (QR) →
+Dashboard (tunnel toggles, DNS, proxy, live stats) → Settings (6 languages,
+RTL for ur/ar).
+
+### B. Real reverse tethering (phone + host)
+
+```
+Phone:  1. install APK → allow VPN + foreground (no root, no adb needed)
+        2. app advertises via mDNS and shows the pairing QR
+Host:   3. cd host/gui && npm install && npm run tauri dev
+        4. Devices screen: phone appears → Connect (or Pairing → scan QR)
+        5. Dashboard: IPv4/IPv6 on → set DNS → Apply
+        6. phone internet now flows through the host's TUN
 ```
 
-### 2. Run the protocol e2e test (no hardware needed)
+### C. Verify without hardware
+
 ```bash
-python3 tests/e2e/run_e2e.sh   # handshake → auth → config → tunnel ping
-node tests/node/test.mjs       # TS codec vs same vectors
+make test          # protocol vectors → state → v1.1 → limits → QoS → obs →
+                   # session → file → security → fuzz → resume → chaos →
+                   # node → E2E real-TCP → i18n → rust → gui build
+bash tests/e2e/run_e2e.sh
 ```
 
-### 3. Pair a device
-```bash
-# Terminal A — pair (prints QR / pairing code)
-unitether pair --name "my-pc"
+### D. Build the artifacts
 
-# On the phone: open UniTether → "Pair with computer" → scan the QR
-# Terminal A auto-detects the connection; or:
-unitether scan                  # mDNS discovery on LAN
-unitether connect <device>      # one-click connect
-```
+| Artifact | Command | Verified by |
+|---|---|---|
+| Desktop app (Win/macOS/Linux) | `make gui` (Tauri release) | `gui` CI job (frontend); Tauri cross-builds on your OS |
+| APK (arm64-v8a, armeabi-v7a, x86_64) | `bash packaging/android-ndk.sh build` | `android` CI job (hard gate, artifact uploaded) |
+| CLI | `cd host && cargo build --release` | `rust` CI job (build + clippy `-D warnings` + test) |
 
-### 4. Use it
-```bash
-unitether tunnel                # start reverse tethering (IPv4+IPv6, ping works)
-unitether stats --watch         # live bandwidth / latency / loss
-unitether qos 4g                # shape device traffic (2G|3G|4G|5G|custom)
-unitether proxy socks 1080      # expose SOCKS5 for other host apps
-unitether proxy http 8888
-unitether disconnect            # clean stop (and it auto-stops on unplug)
-```
-
-### 5. GUI
-```bash
-cd host/gui
-npm install
-npm run tauri dev               # device list, mirror, stats, files, pairing
-```
+> APK build needs JDK 17 + Android SDK 34 + NDK 26 (the CI job provisions
+> them automatically; see the BLOCKED section in docs/27 for sandbox notes).
 
 ---
 
-## What "no root" means here (and what it costs us)
+## Security (summary)
 
-Everything runs inside normal app privileges:
+- **Crypto**: X25519 (RFC 7748, audited), HKDF, AES-GCM, HMAC-SHA256 — no
+  invented primitives; reference implementation pinned by 83 golden vectors.
+- **Pairing is identity-based**: stable device ID + public key + trust
+  registry; register / revoke / re-pair; never device-name based.
+- **Replay + downgrade protected**: replay cache with eviction, nonce
+  management, protocol version floor (v1.1 pin tests).
+- **Limits**: every network-controlled value bounded (19 dedicated tests).
+- **Audit**: 54 security tests (replay, downgrade, MITM, malformed, brute
+  force, exhaustion, path traversal) + 7 fuzz targets in CI + 20 chaos
+  scenarios. Full model: [`SECURITY.md`](SECURITY.md), status:
+  [`docs/16-SECURITY-AUDIT.md`](docs/16-SECURITY-AUDIT.md).
+- **Privacy**: telemetry is metadata-only and consented; no payloads,
+  clipboard, SMS, screen or camera content in logs or metrics.
 
-| Subsystem | API used | Root needed? |
-|---|---|:---:|
-| Reverse tethering | `VPNService` | ❌ |
-| Screen capture | `MediaProjection` (+ permission dialog) | ❌ |
-| Audio both ways | `AudioRecord`/`AudioTrack` (user-approved) | ❌ |
-| Wi-Fi Direct | `WifiP2pManager` (user-approved) | ❌ |
-| Bluetooth PAN | `BtPan` (user-approved pairing) | ❌ |
-| LAN discovery | `NsdManager` (mDNS) | ❌ |
-| Input injection | `AccessibilityService.dispatchGesture` (user consent) | ❌ |
-| Notification mirror | `NotificationListenerService` (user consent) | ❌ |
+## Testing & CI (honest)
 
-Costs: one-time consent dialogs, and the accessibility service is
-user-granted (documented in-app, never forced). This is the same
-trade-off class as scrcpy/KDE Connect.
+- **CI runs on `ubuntu-latest` only** (5 jobs: protocol conformance, Rust
+  build/clippy/test, Android release APK, GUI build + GUI i18n, benchmarks).
+  There is **no coverage gate** and **no Windows/macOS CI runner** yet —
+  desktop matrix builds are a v1.0 item (docs/27).
+- Test totals at HEAD: 212 node assertions, 83 vectors, 107 state, 54 v1.1,
+  23 v1.1 pin, 19 limits, 732 scheduler/property, 38 observability, 26
+  session, 23 file-v2, 54 security, 7 fuzz targets (500 iters in CI),
+  14 resume, 20 chaos, 124+9 i18n checks.
 
----
+## i18n
 
-## How we improve Gnirehtet (all 11 baseline gaps, closed)
-
-1. **IPv6** — dedicated `tunnel-v6` channel; `VPNService.Builder`
-   dual-stack; raw IPv6 packets passthrough. *(Gnirehtet: "not planned".)*
-2. **Wireless** — Wi-Fi Direct (P2P group on device), Bluetooth PAN,
-   plain LAN TCP; all carry the same ULP byte stream.
-3. **Auto-discovery** — mDNS `_unilink._tcp` + QR pairing; saved devices
-   auto-reconnect.
-4. **Screen mirroring** — MediaProjection → C2 H.264/HEVC → ULP video
-   channel → WebCodecs/ffmpeg decode; adaptive bitrate.
-5. **Audio** — Opus 48 kHz both directions over separate channels,
-   independent mute, echo-free (device uses `VOICE_COMMUNICATION` source
-   with AEC where available).
-6. **GUI** — Tauri desktop app + CLI with identical feature surface.
-7. **Auto-stop on disconnect** — ADB monitor thread + transport
-   liveness pings; session teardown < 1 s. *(Gnirehtet: manual stop.)*
-8. **Throttling** — token-bucket shaper on both ends; 2G/3G/4G/5G/custom
-   profiles + latency + jitter + loss injection for app testing.
-9. **Proxy** — host-side SOCKS5/HTTP bound to loopback, forwarded into
-   the tunnel (useful for testing apps that force-proxy).
-10. **ICMP** — raw IP passthrough on the TUN means ping/traceroute just
-    work. *(Gnirehtet drops non-TCP/UDP.)*
-11. **Maintenance** — active repo, CI on 4 platforms, ≥80 % coverage gate,
-    documented protocol (forks can interoperate), security policy.
+6 locales: en, ur, ar (both RTL), es, zh, hi — on the device
+(`res/values-*/strings.xml`) **and** in the GUI (JSON catalogs + RTL layout
+switch). Consistency is enforced by `make i18n` / CI: key parity,
+placeholder parity, RTL set, no empty values, and every `t()` key in the
+Svelte views must exist.
 
 ---
 
 ## License & attribution
 
-Apache-2.0 (see `LICENSE`, `NOTICE`, `docs/10-OPEN-SOURCE.md`).
-UniTether is built *in acknowledgment of* **Gnirehtet**
-(Genymobile, Apache-2.0) as its functional baseline — see
-`docs/14-ACKNOWLEDGMENTS.md` for the full etiquette we follow.
-
-## Status
-
-`v0.1.0 "Scaffold"` — complete architecture, protocol spec + conformance
-suite, host workspace, Android app, GUI, CI and docs. See
-`docs/03-ROADMAP.md` for the 6-month plan to 1.0.
-
-**Be nice. Play hard. Ship fast.**
+Apache-2.0 (`LICENSE`, `NOTICE`). UniTether is built in acknowledgment of
+**Gnirehtet** (Genymobile, Apache-2.0) as its functional baseline —
+etiquette in `docs/14-ACKNOWLEDGMENTS.md`.

@@ -64,7 +64,7 @@ jobs:
         run: cargo test --release --manifest-path host/Cargo.toml
 
   android:
-    name: Android device app (release)
+    name: Android device app (release APK)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -73,26 +73,20 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Install NDK (libopus sources)
+      - uses: android-actions/setup-android@v3
+      - name: Vendor libopus sources
+        run: bash packaging/android-ndk.sh fetch
+      - name: Build release APK (all ABIs, hard gate)
+        run: bash packaging/android-ndk.sh build
+      - name: Verify APK exists
         run: |
-          bash packaging/android-ndk.sh fetch
-      - name: Build release APK (universal)
-        run: |
-          cd device
-          yes | ../../packaging/android-ndk.sh build || \
-            (echo "NDK build needs full Android SDK; building JVM-only artifact" && \
-             bash -c 'true')
-      - name: Build universal AAB (no-NDK fallback)
-        run: |
-          cd device
-          ./gradlew assembleRelease || \
-            echo "gradle build requires Android SDK license acceptance"
+          set -e
+          ls device/app/build/outputs/apk/release/*.apk
+          echo "APK size: $(du -h device/app/build/outputs/apk/release/*.apk | cut -f1)"
       - uses: actions/upload-artifact@v4
         with:
           name: unitether-android
-          path: |
-            device/app/build/outputs/**
-          if-no-files-found: ignore
+          path: device/app/build/outputs/apk/release/*.apk
 
   gui:
     name: Host GUI (Tauri)

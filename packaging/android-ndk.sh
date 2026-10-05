@@ -38,12 +38,13 @@ build)
       -I "$VENDOR/opus/celt" -I "$VENDOR/opus/celt/x86" \
       -I "$VENDOR/opus/x86" -I "$VENDOR/opus" \
       "$VENDOR/opus"/celt/*.c "$VENDOR/opus"/src/*.c \
-      -o "app/src/main/jniLibs/$abi/libopus.so" 2>/dev/null \
-      || echo "  (NDK compile failed — passthrough stub will be used)"
+      -o "app/src/main/jniLibs/$abi/libopus.so" \
+      || echo "  (NDK clang not on PATH for $abi — opus_jni falls back to passthrough stub)"
   done
-  # 2) APK
+  # 2) APK (hard fail on error — CI treats a missing APK as red)
   ./gradlew assembleRelease
   echo "APK: device/app/build/outputs/apk/release/"
+  ls app/build/outputs/apk/release/*.apk
   ;;
 *)
   echo "usage: $0 [fetch|build]" >&2; exit 1
