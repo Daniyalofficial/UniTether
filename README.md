@@ -110,7 +110,8 @@ UniTether/
 
 ## Quickstart — what to start, in what order
 
-Full walkthrough (every screen, real-hardware order, dev commands):
+Full step-by-step walkthrough with real screenshots (every screen,
+real-hardware order, dev commands):
 **[`docs/28-QUICKSTART.md`](docs/28-QUICKSTART.md)**. The short version:
 
 ### A. Try the GUI now (browser, no install)

@@ -13,7 +13,9 @@
   --warn: #fbbf24;
   --err: #f87171;
   --radius: 10px;
-  --font: "Segoe UI", system-ui, -apple-system, "Noto Sans", sans-serif;
+  --font: "Segoe UI", system-ui, -apple-system, "Noto Sans", "Noto Sans Arabic",
+    "Noto Sans SC", "Noto Sans Devanagari", "Noto Sans Symbols",
+    "Noto Sans Symbols 2", sans-serif;
 }
 
 * { box-sizing: border-box; }
