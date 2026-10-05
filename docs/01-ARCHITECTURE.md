@@ -75,7 +75,7 @@ flowchart LR
 |---|---|---|
 | `unilink-protocol` | ULP framing, channels, messages, cipher profiles, vectors | none (std) — `zstd`, `x25519-dalek`, `sha2` behind features |
 | `unilink-transport` | `adb` (adb-forward + monitor), `tcp` LAN, `wifidirect` group, `mdns` discovery, pairing blob, session state | `tokio`, `mdns-sd`, `qrcode` |
-| `unilink-tunnel` | TUN device (linux/mac/win), dual-stack engine, token-bucket QoS, latency/loss injectors, stats, ICMP passthrough | `libc`/`windows`, `tun` (windows: WinTun) |
+| `unilink-tunnel` | TUN device (linux/mac/win), dual-stack engine, token-bucket QoS, latency/loss injectors, stats, ICMP passthrough | std only — raw FFI (unix `ioctl`, WinTun C API) |
 | `unilink-proxy` | SOCKS5 + HTTP proxy bound to loopback, bridged into tunnel proxy channel | `tokio` |
 | `unitether` | CLI binary, config (`~/.config/unitether/config.toml`), session management, tray hooks | `clap` |
 | `gui/src-tauri` | Tauri commands ↔ session, stats events, mirror NAL delivery to WebCodecs | `tauri` |

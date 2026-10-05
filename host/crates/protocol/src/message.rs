@@ -97,10 +97,10 @@ impl TunnelConfig {
             Ok(r)
         };
         let mut c = TunnelConfig::default();
-        c.v4_prefix = *take(1)?[0] as u8;
+        c.v4_prefix = take(1)?[0];
         c.v4_device = take(4)?[..].try_into().unwrap();
         c.v4_host = take(4)?[..].try_into().unwrap();
-        c.v6_prefix = *take(1)?[0] as u8;
+        c.v6_prefix = take(1)?[0];
         if c.v6_prefix > 0 {
             c.v6_device = take(16)?[..].try_into().unwrap();
             c.v6_host = take(16)?[..].try_into().unwrap();
@@ -112,7 +112,7 @@ impl TunnelConfig {
         }
         let route_count = u16::from_be_bytes(take(2)?[..].try_into().unwrap()) as usize;
         for _ in 0..route_count {
-            let p = *take(1)?[0] as u8;
+            let p = take(1)?[0];
             let a: [u8; 4] = take(4)?[..].try_into().unwrap();
             c.routes.push((p, a));
         }

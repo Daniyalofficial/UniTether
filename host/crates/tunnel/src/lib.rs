@@ -3,7 +3,7 @@
 //!
 //! * Linux: `/dev/net/tun` + `TUNSETIFF` (IFF_NO_PI, IFF_TUN, IFF_MULTI_CAST off)
 //! * macOS: `utun` via `utun(4)` (IFF_TUN, IFF_NO_PI unsupported → MTU handling)
-//! * Windows: `TAP` via the Win32 TUN API (Wintun-compatible)
+//! * Windows: TUN via the WinTun C API (raw FFI, `wintun.dll`, no root)
 //! * Fallback: [`NullTun`] for conformance tests and proxy-only mode
 //!
 //! The tunnel carries both IPv4 and IPv6 (dual-stack) — the same file
@@ -27,7 +27,9 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 pub trait TunDevice: Send {
     /// Interface name (tun0, utun3, ...).
     fn name(&self) -> &str;
-    fn fd(&self) -> Option<std::os::unix::io::RawFd>;
+    /// Raw OS handle of the underlying device, for diagnostics
+    /// (a unix fd on Linux/macOS; `None` on Windows — opaque WinTun adapter).
+    fn raw_handle(&self) -> Option<std::os::raw::c_int>;
 
     /// Read one packet (IPv4 or IPv6).
     fn read_packet(&mut self) -> io::Result<Vec<u8>>;

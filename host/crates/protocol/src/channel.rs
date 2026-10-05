@@ -275,7 +275,7 @@ impl Notification {
     pub fn parse(body: &[u8]) -> Result<Self> {
         need(body, 13, "notification")?;
         let mut off = 13;
-        let mut fields = [String::new(); 3];
+        let mut fields = std::array::from_fn(|_| String::new());
         for f in fields.iter_mut() {
             need(body, off + 2, "notification str")?;
             let l = u16::from_be_bytes([body[off], body[off + 1]]) as usize;

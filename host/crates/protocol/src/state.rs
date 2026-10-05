@@ -11,8 +11,6 @@
 
 use std::collections::HashMap;
 
-pub mod state_gen;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SessionState {
     Discovering,
@@ -357,7 +355,7 @@ mod tests {
         for &s in SessionState::ALL {
             for &e in TransitionEvent::ALL {
                 let rust = step(s, e).map(|x| x.as_str());
-                let gen = state_gen::expected(s.as_str(), e.as_str());
+                let gen = crate::state_gen::expected(s.as_str(), e.as_str());
                 assert_eq!(
                     rust,
                     gen,
@@ -370,7 +368,7 @@ mod tests {
             }
         }
         assert_eq!(
-            state_gen::transition_count(),
+            crate::state_gen::transition_count(),
             37usize,
             "generated table size drift"
         );

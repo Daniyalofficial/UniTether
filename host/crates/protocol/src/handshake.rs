@@ -188,8 +188,13 @@ pub fn derive_session_keys(shared: &[u8; 32], nonce_a: &[u8; 16],
     SessionKeys { key_aead, key_mac }
 }
 
-/// Convenience: full derivation from secrets (both roles call the same fn).
-pub fn derive(secret: &[u8], priv_key: &[u8; 32], peer_pub: &[u8; 32],
+/// Convenience: full derivation (both roles call the same fn).
+///
+/// `secret` (the pairing secret) is part of the API for symmetry with the
+/// reference implementation, but the KDF input is ECDH-only — the pairing
+/// secret authenticates the HELLO/HELLO_ACK MACs, not the session keys
+/// (spec: keys = HKDF(X25519, nonce_a||nonce_b, "unilink-v1"||cipher)).
+pub fn derive(_secret: &[u8], priv_key: &[u8; 32], peer_pub: &[u8; 32],
               nonce_a: &[u8; 16], nonce_b: &[u8; 16], cipher_sel: u8) -> SessionKeys {
     let shared = x25519(priv_key, peer_pub);
     derive_session_keys(&shared, nonce_a, nonce_b, cipher_sel)

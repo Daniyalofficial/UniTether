@@ -10,8 +10,8 @@ jobs:
     name: Protocol conformance (Python + Node)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Golden vectors
@@ -38,7 +38,7 @@ jobs:
         run: python3 tests/protocol/test_security.py
       - name: Fuzz targets (CI smoke, 500 iters/target)
         run: python3 tests/protocol/fuzz.py --iters 500
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
       - name: Node conformance
@@ -52,7 +52,7 @@ jobs:
     name: Rust host (build + clippy + test)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -68,12 +68,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@v3
+      # The hosted runner ships a pre-installed Android SDK (ANDROID_HOME set).
+      # We invoke sdkmanager directly instead of android-actions/setup-android
+      # (that action runs `sdkmanager tools`, a package the current SDK
+      # repository no longer provides).
+      - name: Provision Android SDK packages
+        run: |
+          # NOTE: no `pipefail` — `yes` exits with EPIPE once sdkmanager
+          # finishes reading the license answers, which must not fail the step.
+          set -eu
+          export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "cmake;3.22.1" \
+            "ndk;26.1.10909125"
       - name: Vendor libopus sources
         run: bash packaging/android-ndk.sh fetch
       - name: Build release APK (all ABIs, hard gate)
@@ -83,7 +99,7 @@ jobs:
           set -e
           ls device/app/build/outputs/apk/release/*.apk
           echo "APK size: $(du -h device/app/build/outputs/apk/release/*.apk | cut -f1)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: unitether-android
           path: device/app/build/outputs/apk/release/*.apk
@@ -92,8 +108,8 @@ jobs:
     name: Host GUI (Tauri)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
       - name: Install frontend deps
@@ -109,11 +125,11 @@ jobs:
     name: Latency / throughput smoke
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
       - name: Loopback benchmark

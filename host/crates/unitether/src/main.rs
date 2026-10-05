@@ -300,7 +300,18 @@ fn open_tun() -> std::io::Result<Box<dyn TunDevice>> {
     unilink_tunnel::tun_linux::TunLinux::open().map(|t| -> Box<dyn TunDevice> { Box::new(t) })
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "macos")]
+fn open_tun() -> std::io::Result<Box<dyn TunDevice>> {
+    unilink_tunnel::tun_macos::TunMacos::open().map(|t| -> Box<dyn TunDevice> { Box::new(t) })
+}
+
+#[cfg(windows)]
+fn open_tun() -> std::io::Result<Box<dyn TunDevice>> {
+    unilink_tunnel::tun_windows::TunWindows::open("UniTether")
+        .map(|t| -> Box<dyn TunDevice> { Box::new(t) })
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
 fn open_tun() -> std::io::Result<Box<dyn TunDevice>> {
     Err(std::io::Error::new(std::io::ErrorKind::Unsupported,
         "native TUN not implemented on this OS; use --no-tunnel"))
