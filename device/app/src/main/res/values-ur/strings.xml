@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniTether</string>
+    <string name="idle">آئیڈل</string>
+    <string name="listening">سن رہا ہے — ہوس سے رابطہ کریں (ADB / LAN)</string>
+    <string name="connected">جڑا ہوا — ریورس تھٹر فعال</string>
+    <string name="disconnected">جڑاؤ ختم</string>
+    <string name="stopped">روک دیا گیا</string>
+    <string name="paired">پیرنگ سکرٹ اپ ڈیٹ</string>
+    <string name="start">شروع کریں</string>
+    <string name="stop">روکیں</string>
+    <string name="qr">پیرنگ QR کوڈ دکھائیں</string>
+    <string name="scan_qr">ہوس سے اسکین کریں</string>
+    <string name="paste_title">پیرنگ بلاسٹ پیسٹ کریں</string>
+    <string name="paste_blob">UNITETHER1:…</string>
+    <string name="pairing_label">پیرنگ بلاسٹ (ہوس پر اسکین یا پیسٹ کریں):</string>
+    <string name="tunnel_running">ریورس تھٹر چل رہا ہے</string>
+    <string name="tunnel_channel">ٹنل</string>
+    <string name="mirror_running">اسکرین مشیرنگ فعال</string>
+    <string name="audio_running">آڈیو بریج فعال</string>
+    <string name="notify_service_label">UniTether اطلاعات</string>
+    <string name="features">خصوصیات</string>
+    <string name="features_list">ڈوئل اسٹیک ریورس ٹنل (IPv4+IPv6)\nاسکرین مشیر (H.264، 4K60)\nدو طرفہ Opus آڈیو\nٹچ / کی / ٹیکسٹ انپٹ\nکلیپ بورڈ، فائلیں، اطلاعات\nSMS/WhatsApp جواب\nکیمرہ ہوس ویب کم کے طور پر</string>
+</resources>

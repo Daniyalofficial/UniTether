@@ -1,0 +1,99 @@
+{
+ "protocol": "unilink",
+ "version": 1,
+ "vectors": [
+  {
+   "name": "video_key_1080p60",
+   "kind": "video",
+   "kind_field": 0,
+   "codec": 0,
+   "width": 1920,
+   "height": 1080,
+   "fps": 60,
+   "pts_ms": 33,
+   "seq": 7,
+   "nal": "0021180810000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60616263",
+   "expected": "0000078004383c00000021000000070021180810000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60616263"
+  },
+  {
+   "name": "video_delta",
+   "kind": "video",
+   "kind_field": 1,
+   "codec": 0,
+   "width": 1920,
+   "height": 1080,
+   "fps": 60,
+   "pts_ms": 50,
+   "seq": 8,
+   "nal": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+   "expected": "0100078004383c0000003200000008000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f"
+  },
+  {
+   "name": "audio_opus",
+   "kind": "audio",
+   "codec": 0,
+   "rate": 48000,
+   "ch": 1,
+   "seq": 5,
+   "pts_ms": 100,
+   "data": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+   "expected": "00bb80010000000500000064000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+  },
+  {
+   "name": "input_touch_down",
+   "kind": "input",
+   "type_field": 0,
+   "action": 0,
+   "x": 512,
+   "y": 733,
+   "expected": "0000020002dd00000000"
+  },
+  {
+   "name": "input_text",
+   "kind": "input",
+   "type_field": 3,
+   "action": 0,
+   "x": 0,
+   "y": 0,
+   "text": "hi ünïtëther",
+   "expected": "0300000000000000000f686920c3bc6ec3af74c3ab74686572"
+  },
+  {
+   "name": "notes.txt",
+   "kind": "file_meta",
+   "direction": 0,
+   "file_id": 42,
+   "total_size": 123456,
+   "expected": "00000000002a000000000001e24000096e6f7465732e747874"
+  },
+  {
+   "name": "file_data",
+   "kind": "file_data",
+   "direction": 0,
+   "file_id": 42,
+   "seq": 3,
+   "offset": 98304,
+   "chunk": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+   "expected": "01000000002a000000030000000000018000deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  },
+  {
+   "name": "clipboard_text",
+   "kind": "clipboard",
+   "direction": 0,
+   "kind_field": 0,
+   "data": "clipboard payload",
+   "expected": "0000636c6970626f617264207061796c6f6164"
+  },
+  {
+   "name": "notification_post",
+   "kind": "notification",
+   "id": 7,
+   "ts_ms": 1712345678901,
+   "action": 0,
+   "app": "com.example.msgs",
+   "title": "Alice",
+   "body": "Hello from the phone!",
+   "expected": "000000070000018eafc18435000010636f6d2e6578616d706c652e6d7367730005416c696365001548656c6c6f2066726f6d207468652070686f6e6521"
+  }
+ ]
+}

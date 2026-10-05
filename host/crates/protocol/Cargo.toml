@@ -1,0 +1,12 @@
+[package]
+name = "unilink-protocol"
+description = "UniLink Protocol (ULP) v1 - framing, channels, messages, handshake"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Deliberately zero external dependencies: the protocol core must build
+# on any Rust toolchain with no network access (CI air-gaps, audit).

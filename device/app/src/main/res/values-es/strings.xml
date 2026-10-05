@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniTether</string>
+    <string name="idle">Inactivo</string>
+    <string name="listening">Escuchando — conéctese desde el host (ADB / LAN)</string>
+    <string name="connected">Conectado — tether inverso activo</string>
+    <string name="disconnected">Desconectado</string>
+    <string name="stopped">Detenido</string>
+    <string name="paired">Secreto de emparejamiento actualizado</string>
+    <string name="start">Iniciar</string>
+    <string name="stop">Detener</string>
+    <string name="qr">Mostrar código QR de emparejamiento</string>
+    <string name="scan_qr">Escanear desde el host</string>
+    <string name="paste_title">Pegar cadena de emparejamiento</string>
+    <string name="paste_blob">UNITETHER1:…</string>
+    <string name="pairing_label">Cadena de emparejamiento (escanear o pegar en el host):</string>
+    <string name="tunnel_running">Tether inverso en curso</string>
+    <string name="tunnel_channel">Túnel</string>
+    <string name="mirror_running">Espejo de pantalla activo</string>
+    <string name="audio_running">Puente de audio activo</string>
+    <string name="notify_service_label">Notificaciones de UniTether</string>
+    <string name="features">Funciones</string>
+    <string name="features_list">Túnel inverso dual-stack (IPv4+IPv6)\nEspejo de pantalla (H.264, hasta 4K60)\nAudio Opus bidireccional\nTáctil / teclas / texto\nPortapapeles, archivos, notificaciones\nRespuesta a SMS/WhatsApp\nCámara como webcam del host</string>
+</resources>

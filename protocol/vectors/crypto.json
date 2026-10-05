@@ -1,0 +1,59 @@
+{
+ "protocol": "unilink",
+ "version": 1,
+ "vectors": [
+  {
+   "name": "rfc7748_public_alice",
+   "kind": "x25519_pub",
+   "secret": "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a",
+   "expected": "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a"
+  },
+  {
+   "name": "rfc7748_public_bob",
+   "kind": "x25519_pub",
+   "secret": "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb",
+   "expected": "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f"
+  },
+  {
+   "name": "rfc7748_shared",
+   "kind": "x25519",
+   "secret": "77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a",
+   "pub": "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f",
+   "expected": "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742"
+  },
+  {
+   "name": "rfc7748_shared_rev",
+   "kind": "x25519",
+   "secret": "5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb",
+   "pub": "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a",
+   "expected": "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742"
+  },
+  {
+   "name": "hkdf_session_keys",
+   "kind": "hkdf",
+   "ikm": "4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742",
+   "salt": "a102030405060708090a0b0c0d0e0f10b12233445566778899aabbccddeeff00",
+   "info": "756e696c696e6b2d763101",
+   "length": 64,
+   "expected": "8e30384e55180065afb06508b1fba22c79ac92b4826f86d0dcc3fb287d0a4816bc95349b89be61b0bae9d9a09cb1861ef57d58f9dc89b4e33e10f6dc4a3b38ae"
+  },
+  {
+   "name": "interop_aead",
+   "kind": "interop",
+   "key_aead": "8e30384e55180065afb06508b1fba22c79ac92b4826f86d0dcc3fb287d0a4816",
+   "key_mac": "bc95349b89be61b0bae9d9a09cb1861ef57d58f9dc89b4e33e10f6dc4a3b38ae",
+   "nonce": "000000000000000700000009",
+   "aad": "554c01090200c8",
+   "pt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7",
+   "expected": "858c84dcc40fd683f16738213fe60f4347a91475b8135b4d5755716fe3322224e167c5840c96607a7889df5fb996256a64561bf69ce5d2af155e420132f2995cb8d3827cbae0ab49bb4185b54b6b0d22608582f16e46e65c83c97147f6a331bfd31f43005e5c850ce97cd4b908e57bfef995cbd4c2bb8aa1deff279759d49e3ea80fc9406fad3b12eefa532a453767e32fa21c7178a3d0777dfd1d15e2d756df21004e0f91e271a179f5c039ae832af53e3eec2abd382fe69daccf44e1b9ed57fc3f87fdadfd2e4d994259760a182c259d3836204aeb978f"
+  },
+  {
+   "name": "frame_nonce_counter7",
+   "kind": "frame_nonce",
+   "counter": 7,
+   "channel": 9,
+   "direction": 0,
+   "expected": "000000000000000700000009"
+  }
+ ]
+}

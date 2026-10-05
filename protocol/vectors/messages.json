@@ -1,0 +1,121 @@
+{
+ "protocol": "unilink",
+ "version": 1,
+ "vectors": [
+  {
+   "name": "hello",
+   "kind": "hello",
+   "role": 0,
+   "feature_mask": 255,
+   "cipher_pref": 1,
+   "ecdh_pub": "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a",
+   "nonce_a": "a102030405060708090a0b0c0d0e0f10",
+   "secret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+   "expected": "0000ff018520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6aa102030405060708090a0b0c0d0e0f105308c6041fca899d0cc177b313947bb7cefe6a405f9cff9a02a8a9ff6c3f2325"
+  },
+  {
+   "name": "hello_ack",
+   "kind": "hello_ack",
+   "negotiated": 255,
+   "cipher_sel": 1,
+   "ecdh_pub": "de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f",
+   "nonce_b": "b12233445566778899aabbccddeeff00",
+   "nonce_a": "a102030405060708090a0b0c0d0e0f10",
+   "secret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+   "expected": "00ff01de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4fb12233445566778899aabbccddeeff009b189a267631109689bd3917963b20892304c47027deb633188e696d082e5b0c"
+  },
+  {
+   "name": "auth_ok",
+   "kind": "msg",
+   "expected": "04000000"
+  },
+  {
+   "name": "ping",
+   "kind": "msg",
+   "expected": "050000080000018eafc18435"
+  },
+  {
+   "name": "config_dual_stack",
+   "kind": "config",
+   "v4_prefix": 20,
+   "v4_device": "0a080002",
+   "v4_host": "0a080001",
+   "v6_prefix": 64,
+   "v6_device": "fd004c55010000000000000000000002",
+   "v6_host": "fd004c55010000000000000000000001",
+   "dns": [
+    "01010101",
+    "09090909"
+   ],
+   "routes": [
+    [
+     0,
+     "00000000"
+    ],
+    [
+     64,
+     "00000000"
+    ]
+   ],
+   "expected": "140a0800020a08000140fd004c55010000000000000000000002fd004c5501000000000000000000000100020101010109090909000200000000004000000000"
+  },
+  {
+   "name": "qos_4g",
+   "kind": "qos",
+   "profile": 4,
+   "up_kbps": 30000,
+   "down_kbps": 50000,
+   "latency_ms": 15,
+   "jitter_ms": 0,
+   "loss_pct": 0,
+   "expected": "04000075300000c350000f0000"
+  },
+  {
+   "name": "qos_2g",
+   "kind": "qos",
+   "profile": 1,
+   "up_kbps": 384,
+   "down_kbps": 768,
+   "latency_ms": 120,
+   "jitter_ms": 20,
+   "loss_pct": 2,
+   "expected": "01000001800000030000781402"
+  },
+  {
+   "name": "stats",
+   "kind": "stats",
+   "bytes_in": 1000000,
+   "bytes_out": 999999,
+   "pkts_in": 5000,
+   "pkts_out": 4999,
+   "bytes_video": 123456,
+   "bytes_audio": 789,
+   "bytes_file": 10,
+   "drops": 3,
+   "errors": 0,
+   "frames_video": 1800,
+   "rtt_ms": 12,
+   "loss_pct_x100": 5,
+   "cpu_pct_x100": 1234,
+   "fps_video": 60,
+   "audio_level": 200,
+   "expected": "00000000000f424000000000000f423f00000000000013880000000000001387000000000001e2400000000000000315000000000000000a0000000000000003000000000000000000000000000007080000000c00000005000004d20000003c000000c800000000"
+  },
+  {
+   "name": "mute_all",
+   "kind": "mute",
+   "mask": 15,
+   "expected": "0c0000010f"
+  },
+  {
+   "name": "bye",
+   "kind": "msg",
+   "expected": "0f00000102"
+  },
+  {
+   "name": "error_auth",
+   "kind": "msg",
+   "expected": "1000000e0b000c6261642070616972696e67"
+  }
+ ]
+}

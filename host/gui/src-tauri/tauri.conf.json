@@ -1,0 +1,37 @@
+{
+  "productName": "UniTether",
+  "version": "0.1.0",
+  "identifier": "com.unilink.gui",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "UniTether",
+        "width": 980,
+        "height": 640,
+        "minWidth": 760,
+        "minHeight": 480,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "id": "unilink-tray",
+      "tooltip": "UniTether"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ]
+  }
+}

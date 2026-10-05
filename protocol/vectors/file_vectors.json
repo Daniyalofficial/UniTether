@@ -1,0 +1,89 @@
+{
+  "v": 1,
+  "name": "ulp-file-v2-ops",
+  "vectors": [
+    {
+      "name": "meta",
+      "op": 0,
+      "args": {
+        "direction": 0,
+        "file_id": 3735928559,
+        "total": 1234605616436508552,
+        "name": "hello",
+        "total_hex": "1122334455667788"
+      },
+      "expected": "0000deadbeef1122334455667788000568656c6c6f"
+    },
+    {
+      "name": "data",
+      "op": 1,
+      "args": {
+        "direction": 1,
+        "file_id": 5,
+        "seq": 3,
+        "offset": 12345,
+        "chunk_hex": "58595a"
+      },
+      "expected": "01010000000500000003000000000000303958595a"
+    },
+    {
+      "name": "ack",
+      "op": 2,
+      "args": {
+        "direction": 0,
+        "file_id": 9,
+        "seq_ack": 1
+      },
+      "expected": "02000000000900000001"
+    },
+    {
+      "name": "cancel",
+      "op": 3,
+      "args": {
+        "direction": 0,
+        "file_id": 9
+      },
+      "expected": "030000000009"
+    },
+    {
+      "name": "done",
+      "op": 4,
+      "args": {
+        "direction": 0,
+        "file_id": 9
+      },
+      "expected": "040000000009"
+    },
+    {
+      "name": "resume_req",
+      "op": 5,
+      "args": {
+        "direction": 0,
+        "file_id": 9,
+        "expected_offset": 123456
+      },
+      "expected": "050000000009000000000001e240"
+    },
+    {
+      "name": "resume_rsp",
+      "op": 6,
+      "args": {
+        "direction": 1,
+        "file_id": 9,
+        "offset": 123456,
+        "state": 2
+      },
+      "expected": "060100000009000000000001e24002"
+    },
+    {
+      "name": "checksum",
+      "op": 7,
+      "args": {
+        "direction": 0,
+        "file_id": 9,
+        "sha256_hex": "d7ad0fef37fc985f023e68bef72bf62a17729bd999484acf5ebeb4390861e4c7"
+      },
+      "expected": "070000000009d7ad0fef37fc985f023e68bef72bf62a17729bd999484acf5ebeb4390861e4c7"
+    }
+  ]
+}

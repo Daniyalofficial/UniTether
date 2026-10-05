@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UniTether</string>
+    <string name="idle">空闲</string>
+    <string name="listening">监听中 — 从主机连接（ADB / 局域网）</string>
+    <string name="connected">已连接 — 反向共享网络运行中</string>
+    <string name="disconnected">已断开</string>
+    <string name="stopped">已停止</string>
+    <string name="paired">配对密钥已更新</string>
+    <string name="start">开始</string>
+    <string name="stop">停止</string>
+    <string name="qr">显示配对二维码</string>
+    <string name="scan_qr">从主机扫描</string>
+    <string name="paste_title">粘贴配对码</string>
+    <string name="paste_blob">UNITETHER1:…</string>
+    <string name="pairing_label">配对码（在主机上扫描或粘贴）：</string>
+    <string name="tunnel_running">反向共享网络运行中</string>
+    <string name="tunnel_channel">隧道</string>
+    <string name="mirror_running">屏幕镜像运行中</string>
+    <string name="audio_running">音频桥运行中</string>
+    <string name="notify_service_label">UniTether 通知</string>
+    <string name="features">功能</string>
+    <string name="features_list">双栈反向隧道（IPv4+IPv6）\n屏幕镜像（H.264，最高 4K60）\n双向 Opus 音频\n触摸 / 按键 / 文本输入\n剪贴板、文件、通知\n短信/WhatsApp 回复\n手机摄像头作为主机摄像头</string>
+</resources>

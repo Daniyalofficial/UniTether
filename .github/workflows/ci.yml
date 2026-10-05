@@ -1,0 +1,120 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  protocol-conformance:
+    name: Protocol conformance (Python + Node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Golden vectors
+        run: python3 tests/protocol/test_vectors.py
+      - name: State machine + ULP v1.1 + resume
+        run: |
+          python3 tests/protocol/test_state.py
+          python3 tests/protocol/test_v11.py
+          python3 tests/protocol/test_v11_vectors.py
+          python3 tests/e2e/test_resume.py
+      - name: Limits / errors
+        run: python3 tests/protocol/test_limits.py
+      - name: QoS scheduler + property tests
+        run: python3 tests/protocol/test_scheduler.py
+      - name: Observability (privacy-enforced) + session manager
+        run: |
+          python3 tests/protocol/test_obs.py
+          python3 tests/protocol/test_session_manager.py
+      - name: File transfer v2 (resume + integrity)
+        run: python3 tests/protocol/test_file.py
+      - name: Chaos engineering (flap / crash / ip-change / dup / loss / latency)
+        run: python3 tests/e2e/test_chaos.py
+      - name: Security suite (replay / downgrade / MITM / malformed / brute force / exhaustion / traversal)
+        run: python3 tests/protocol/test_security.py
+      - name: Fuzz targets (CI smoke, 500 iters/target)
+        run: python3 tests/protocol/fuzz.py --iters 500
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Node conformance
+        run: node tests/node/test.mjs
+      - name: Real-TCP E2E (Python + Node)
+        run: bash tests/e2e/run_e2e.sh
+      - name: i18n consistency (keys / placeholders / plurals / RTL / hardcode)
+        run: python3 tests/i18n/check_i18n.py
+
+  rust:
+    name: Rust host (build + clippy + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Build
+        run: cargo build --release --manifest-path host/Cargo.toml
+      - name: Clippy
+        run: cargo clippy --manifest-path host/Cargo.toml -- -D warnings
+      - name: Test
+        run: cargo test --release --manifest-path host/Cargo.toml
+
+  android:
+    name: Android device app (release APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Vendor libopus sources
+        run: bash packaging/android-ndk.sh fetch
+      - name: Build release APK (all ABIs, hard gate)
+        run: bash packaging/android-ndk.sh build
+      - name: Verify APK exists
+        run: |
+          set -e
+          ls device/app/build/outputs/apk/release/*.apk
+          echo "APK size: $(du -h device/app/build/outputs/apk/release/*.apk | cut -f1)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unitether-android
+          path: device/app/build/outputs/apk/release/*.apk
+
+  gui:
+    name: Host GUI (Tauri)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install frontend deps
+        working-directory: host/gui
+        run: npm install --no-audit --no-fund
+      - name: Frontend build
+        working-directory: host/gui
+        run: npm run build
+      - name: GUI i18n consistency (keys / placeholders / t() usage / RTL)
+        run: python3 tests/i18n/check_gui_i18n.py
+
+  benchmarks:
+    name: Latency / throughput smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Loopback benchmark
+        run: python3 benchmarks/bench_loopback.py
