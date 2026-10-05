@@ -195,7 +195,7 @@ fn fe_mul(a: F, b: F) -> F {
     // bit 255 is bit 63 of limb3 (limb3 covers bits 192..255)
     // lo = value mod 2^255 (bits 0..254), hi = value >> 255 (< 2^257)
     let lo = [limbs[0], limbs[1], limbs[2], limbs[3] & LIMB63_MASK];
-    let hi = [
+    let mut hi = [
         (limbs[3] >> 63) | (limbs[4] << 1),
         (limbs[4] >> 63) | (limbs[5] << 1),
         (limbs[5] >> 63) | (limbs[6] << 1),
@@ -283,8 +283,9 @@ pub fn x25519(secret: &[u8; 32], u_bytes: &[u8; 32]) -> [u8; 32] {
     u = lo_mod_p(u);
     let a24: F = [121665, 0, 0, 0];
 
-    let mut x1 = u;
-    let mut z1 = fe_one();
+    // RFC 7748 §5 ladder state (x1/z1 = base point, x1 only used in z3 update;
+    // z1 = 1 is implicit in the x-only ladder)
+    let x1 = u;
     let mut x2 = fe_one();
     let mut z2 = [0u64; 4];
     let mut x3 = u;

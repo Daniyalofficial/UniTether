@@ -33,7 +33,7 @@ jobs:
       - name: File transfer v2 (resume + integrity)
         run: python3 tests/protocol/test_file.py
       - name: Chaos engineering (flap / crash / ip-change / dup / loss / latency)
-        run: bash tests/e2e/test_chaos.py
+        run: python3 tests/e2e/test_chaos.py
       - name: Security suite (replay / downgrade / MITM / malformed / brute force / exhaustion / traversal)
         run: python3 tests/protocol/test_security.py
       - name: Fuzz targets (CI smoke, 500 iters/target)
@@ -79,9 +79,11 @@ jobs:
       # repository no longer provides).
       - name: Provision Android SDK packages
         run: |
-          set -euo pipefail
+          # NOTE: no `pipefail` — `yes` exits with EPIPE once sdkmanager
+          # finishes reading the license answers, which must not fail the step.
+          set -eu
           export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin"
-          yes | sdkmanager --licenses > /dev/null
+          yes | sdkmanager --licenses > /dev/null || true
           sdkmanager --install \
             "platform-tools" \
             "platforms;android-34" \
